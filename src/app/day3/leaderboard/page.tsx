@@ -1,0 +1,179 @@
+import Link from "next/link";
+import { Flag, Settings, Trophy } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { getDay3Leaderboard, getDay3Matches, getDay3Teams } from "@/lib/server/day3";
+import { getCurrentUser } from "@/lib/session";
+
+export const metadata = { title: "Day 3 — Huron Cup" };
+
+export default async function Day3LeaderboardPage() {
+  const [user, lb, matches, teams] = await Promise.all([
+    getCurrentUser(),
+    getDay3Leaderboard(),
+    getDay3Matches(),
+    getDay3Teams(),
+  ]);
+
+  const isAdmin = user?.kind === "admin";
+  const userId = user?.kind === "player" ? user.player.id : null;
+  const allRoster = [...teams.truffleHogs, ...teams.myceliumSyndicate];
+  const isCaptain = userId !== null && allRoster.some((p) => p.playerId === userId && p.isCaptain);
+  const canSetupMatches = isAdmin || isCaptain;
+
+  const s = lb.summary;
+  const truffleWins = s.truffleMatchWins;
+  const syndicateWins = s.syndicateMatchWins;
+  const truffleLeading = truffleWins > syndicateWins;
+  const tie = truffleWins === syndicateWins;
+  const allMatchesDone = matches.length > 0 && matches.every((m) => m.holesPlayed === 18);
+
+  return (
+    <AppShell title="Day 3 — Huron Cup">
+      {canSetupMatches && (
+        <div className="mb-5">
+          <Button asChild className="w-full h-11">
+            <Link href="/day3/setup">
+              <Settings size={16} /> Setup Matches
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      <div className="bg-primary text-white rounded-2xl p-4 mb-5">
+        <p className="text-green-200 text-xs text-center uppercase tracking-widest mb-3">
+          Huron Cup
+        </p>
+        <div className="grid grid-cols-3 items-center text-center">
+          <div className={cn(truffleLeading && "scale-110 transition-transform")}>
+            <p className="text-2xl mb-1">🐗</p>
+            <p className="text-xs text-green-200">Truffle Hogs</p>
+            <p className="text-4xl font-bold">{truffleWins}</p>
+            <p className="text-xs text-green-200">match wins</p>
+          </div>
+          <div>
+            <p className="text-green-200 text-sm font-medium">vs</p>
+            {tie && (truffleWins > 0 || syndicateWins > 0) && (
+              <p className="text-xs text-green-300 mt-1">Tied!</p>
+            )}
+          </div>
+          <div className={cn(!truffleLeading && !tie && "scale-110 transition-transform")}>
+            <p className="text-2xl mb-1">🍄</p>
+            <p className="text-xs text-green-200">Mycelium Syndicate</p>
+            <p className="text-4xl font-bold">{syndicateWins}</p>
+            <p className="text-xs text-green-200">match wins</p>
+          </div>
+        </div>
+        {s.tiedMatches > 0 && (
+          <p className="text-center text-xs text-green-300 mt-2">
+            {s.tiedMatches} tied match{s.tiedMatches > 1 ? "es" : ""}
+          </p>
+        )}
+      </div>
+
+      {allMatchesDone && (
+        <div
+          className={cn(
+            "rounded-2xl p-5 text-center mb-5",
+            truffleLeading
+              ? "bg-truffle-light border border-truffle/30"
+              : !tie
+                ? "bg-syndicate-light border border-syndicate/30"
+                : "bg-muted",
+          )}
+        >
+          <Trophy size={36} className="mx-auto mb-2 text-gold" />
+          <p className="font-bold text-2xl font-heading">
+            {truffleLeading
+              ? "🐗 Truffle Hogs Win!"
+              : !tie
+                ? "🍄 Mycelium Syndicate Wins!"
+                : "It's a Draw!"}
+          </p>
+          <p className="text-sm mt-1 text-muted-foreground">Huron Cup Champions 2026</p>
+        </div>
+      )}
+
+      {matches.length === 0 ? (
+        <div className="text-center py-10">
+          <Flag size={40} className="mx-auto mb-3 text-muted-foreground" />
+          <p className="font-semibold text-muted-foreground">No matches set up yet</p>
+          {canSetupMatches && (
+            <Link href="/day3/setup" className="mt-3 inline-block text-sm text-primary underline">
+              Set up matches →
+            </Link>
+          )}
+        </div>
+      ) : (
+        <>
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            Matches
+          </h3>
+          <div className="space-y-2">
+            {matches.map((m) => {
+              const th = m.truffleHolesWon;
+              const sh = m.syndicateHolesWon;
+              const hp = m.holesPlayed;
+              const complete = hp === 18;
+              const leading = th > sh ? "truffle" : sh > th ? "syndicate" : "tie";
+              const isMyMatch =
+                userId !== null && (m.trufflePlayerId === userId || m.syndicatePlayerId === userId);
+              return (
+                <Link key={m.id} href={`/day3/match/${m.id}`}>
+                  <div
+                    className={cn(
+                      "border rounded-xl p-3 flex items-center gap-3 active:scale-[0.98] transition-transform",
+                      isMyMatch
+                        ? "bg-primary/5 border-primary ring-2 ring-primary/30"
+                        : "bg-white border-border",
+                    )}
+                  >
+                    <div className="text-center w-7 flex-shrink-0">
+                      <p className="text-xs text-muted-foreground">M{m.matchNumber}</p>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        <span className={cn(leading === "truffle" && !complete && "font-bold")}>
+                          {m.trufflePlayerName}
+                        </span>
+                        <span className="text-muted-foreground mx-1">vs</span>
+                        <span className={cn(leading === "syndicate" && !complete && "font-bold")}>
+                          {m.syndicatePlayerName}
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted-foreground">{hp}/18 holes</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {isMyMatch && (
+                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">
+                          You
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1 text-sm font-bold">
+                        <span className={cn(th > sh ? "text-truffle" : "text-muted-foreground")}>
+                          {th}
+                        </span>
+                        <span className="text-muted-foreground text-xs">-</span>
+                        <span
+                          className={cn(sh > th ? "text-syndicate" : "text-muted-foreground")}
+                        >
+                          {sh}
+                        </span>
+                      </div>
+                    </div>
+                    {complete && (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                        Done
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </AppShell>
+  );
+}

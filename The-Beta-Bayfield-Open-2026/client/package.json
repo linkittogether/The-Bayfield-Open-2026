@@ -1,0 +1,43 @@
+{
+  "name": "bayfield-open-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3000",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "*",
+    "@radix-ui/react-avatar": "*",
+    "@radix-ui/react-dialog": "*",
+    "@radix-ui/react-label": "*",
+    "@radix-ui/react-progress": "*",
+    "@radix-ui/react-select": "*",
+    "@radix-ui/react-separator": "*",
+    "@radix-ui/react-slot": "*",
+    "@radix-ui/react-tabs": "*",
+    "@radix-ui/react-toast": "*",
+    "class-variance-authority": "*",
+    "clsx": "*",
+    "date-fns": "*",
+    "lucide-react": "*",
+    "react": "*",
+    "react-dom": "*",
+    "react-hook-form": "*",
+    "tailwind-merge": "*",
+    "wouter": "*",
+    "zod": "*"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "*",
+    "@types/node": "*",
+    "@types/react": "*",
+    "@types/react-dom": "*",
+    "@vitejs/plugin-react": "*",
+    "tailwindcss": "*",
+    "typescript": "*",
+    "vite": "*"
+  }
+}

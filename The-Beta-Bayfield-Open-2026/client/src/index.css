@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Golf green palette */
+  --background: 150 20% 97%;
+  --foreground: 150 30% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 150 30% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 150 30% 10%;
+  --primary: 150 60% 22%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 40 80% 50%;
+  --secondary-foreground: 40 80% 15%;
+  --muted: 150 15% 92%;
+  --muted-foreground: 150 15% 45%;
+  --accent: 40 80% 95%;
+  --accent-foreground: 40 80% 20%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 150 15% 85%;
+  --input: 150 15% 85%;
+  --ring: 150 60% 22%;
+  --radius: 0.75rem;
+  --truffle: 28 45% 35%;
+  --truffle-light: 28 45% 92%;
+  --syndicate: 220 55% 35%;
+  --syndicate-light: 220 55% 92%;
+  --gold: 43 96% 56%;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-family: 'Inter', sans-serif;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 4px; }

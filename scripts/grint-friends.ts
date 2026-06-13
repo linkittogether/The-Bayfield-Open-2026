@@ -114,19 +114,18 @@ async function main() {
     throw new Error("parsed 0 people — the page structure may have changed");
   }
 
-  // Friends only: drop your own row. Keep private/masked profiles (their names
-  // come through redacted as "S**** M****" but the user_id + handicap are real).
-  const friends = people.filter((p) => !p.isMe);
-
+  // Keep everyone, including your own row (isme=1). Private/masked profiles are
+  // kept too (their names come through redacted as "S**** M****" but the
+  // user_id + handicap range are real).
   const header = ["user_id", "name", "handicap", "hcp_range", "rank", "visible"].join("\t");
-  const rows = friends.map((p) =>
+  const rows = people.map((p) =>
     [p.userId, p.name, p.handicap, p.handicapRange, p.rankHcp, p.visible ? "1" : "0"].join("\t"),
   );
   await writeFile(OUTPUT_FILE, [header, ...rows].join("\n") + "\n", "utf8");
 
-  const masked = friends.filter((p) => !p.visible).length;
+  const masked = people.filter((p) => !p.visible).length;
   console.log(
-    `✓ wrote ${friends.length} friends to ${OUTPUT_FILE}` +
+    `✓ wrote ${people.length} people to ${OUTPUT_FILE}` +
       (masked ? ` (${masked} with private/masked names)` : ""),
   );
 }

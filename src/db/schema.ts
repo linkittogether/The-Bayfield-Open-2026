@@ -25,8 +25,13 @@ export const players = pgTable("players", {
   name: text().notNull(),
   photoUrl: text(),
   handicap: integer().notNull().default(0),
+  grintId: integer().unique(),
   pinHash: text().notNull(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp({ withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export const admins = pgTable("admins", {

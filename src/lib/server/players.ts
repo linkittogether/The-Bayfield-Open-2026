@@ -12,7 +12,7 @@ const PIN_PATTERN = /^\d{4}$/;
 
 const createPlayerSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
-  handicap: z.coerce.number().int().min(0).default(0),
+  handicap: z.coerce.number().min(0).default(0),
   pin: z.string().regex(PIN_PATTERN, "PIN must be 4 digits"),
   photoUrl: z.string().nullable().optional(),
 });
@@ -20,7 +20,7 @@ const createPlayerSchema = z.object({
 const updatePlayerSchema = z
   .object({
     name: z.string().trim().min(1).optional(),
-    handicap: z.coerce.number().int().min(0).optional(),
+    handicap: z.coerce.number().min(0).optional(),
     pin: z.string().regex(PIN_PATTERN).optional(),
     photoUrl: z.string().nullable().optional(),
   })

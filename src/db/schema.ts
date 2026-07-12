@@ -1,6 +1,7 @@
 import {
   boolean,
   integer,
+  numeric,
   pgEnum,
   pgTable,
   serial,
@@ -24,7 +25,9 @@ export const players = pgTable("players", {
   id: serial().primaryKey(),
   name: text().notNull(),
   photoUrl: text(),
-  handicap: integer().notNull().default(0),
+  handicap: numeric({ precision: 3, scale: 1, mode: "number" })
+    .notNull()
+    .default(0),
   grintId: integer().unique(),
   pinHash: text().notNull(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),

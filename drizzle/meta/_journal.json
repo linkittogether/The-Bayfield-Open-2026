@@ -15,6 +15,13 @@
       "when": 1783880619393,
       "tag": "0001_curved_puma",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783883185154,
+      "tag": "0002_bent_expediter",
+      "breakpoints": true
     }
   ]
 }

@@ -1,11 +1,19 @@
 "use server";
 
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { day1Scores, day2Teams, players, seasons } from "@/db/schema";
+import {
+  day2Teams,
+  players,
+  seasonRosters,
+  seasons,
+  segments,
+  segmentScores,
+} from "@/db/schema";
 import { requireAdmin, requireAdminOrSelf } from "./auth-guards";
 import { getCurrentSeasonId } from "./seasons";
+import { getSeasonScoring } from "./scoring";
 
 const submitScoreSchema = z.object({
   playerId: z.number().int().positive(),
@@ -17,36 +25,59 @@ const submitPickSchema = z.object({
   pickedPlayerId: z.number().int().positive(),
 });
 
-type LeaderboardRow = {
+export type LeaderboardRow = {
   id: number;
   name: string;
   photoUrl: string | null;
   handicap: number;
   grossScore: number;
+  /** Day-1 (Friday) net — fractional. */
   netScore: number;
   rank: number;
 };
 
+/**
+ * Day-1 leaderboard: players ranked by their Friday (day=1) segment net,
+ * computed via the WHS engine (gross + course handicap from the season's
+ * Bluewater segment and each player's season index).
+ */
 async function fetchRankedLeaderboard(
   seasonId: number,
 ): Promise<LeaderboardRow[]> {
-  const rows = await db
+  const scoring = await getSeasonScoring(seasonId);
+  if (scoring.day1SegmentId == null) return [];
+
+  const scored = [...scoring.byPlayer.values()].filter(
+    (p) => p.day1Gross != null,
+  );
+  if (scored.length === 0) return [];
+
+  const playerRows = await db
     .select({
       id: players.id,
       name: players.name,
       photoUrl: players.photoUrl,
       handicap: players.handicap,
-      grossScore: day1Scores.grossScore,
-      netScore: day1Scores.netScore,
-      rank: sql<number>`ROW_NUMBER() OVER (ORDER BY ${day1Scores.netScore} ASC, ${day1Scores.grossScore} ASC)`.mapWith(
-        Number,
-      ),
     })
-    .from(players)
-    .innerJoin(day1Scores, eq(day1Scores.playerId, players.id))
-    .where(eq(day1Scores.seasonId, seasonId))
-    .orderBy(asc(day1Scores.netScore), asc(day1Scores.grossScore));
-  return rows;
+    .from(players);
+  const pById = new Map(playerRows.map((p) => [p.id, p]));
+
+  const rows = scored
+    .map((s) => {
+      const p = pById.get(s.playerId)!;
+      const netScore = s.day1Net ?? s.day1Gross!;
+      return {
+        id: s.playerId,
+        name: p.name,
+        photoUrl: p.photoUrl,
+        handicap: s.index ?? p.handicap,
+        grossScore: s.day1Gross!,
+        netScore,
+      };
+    })
+    .sort((a, b) => a.netScore - b.netScore || a.grossScore - b.grossScore);
+
+  return rows.map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
 export async function getDay1Leaderboard(seasonId: number) {
@@ -54,20 +85,56 @@ export async function getDay1Leaderboard(seasonId: number) {
 }
 
 export async function getDay1Scores(seasonId: number) {
-  return db
+  const lb = await fetchRankedLeaderboard(seasonId);
+  return lb.map((r) => ({
+    playerId: r.id,
+    grossScore: r.grossScore,
+    netScore: r.netScore,
+    name: r.name,
+    handicap: r.handicap,
+    photoUrl: r.photoUrl,
+  }));
+}
+
+/** The season's Friday (day=1) segment, or null if none configured. */
+async function getDay1Segment(seasonId: number) {
+  const [seg] = await db
+    .select()
+    .from(segments)
+    .where(and(eq(segments.seasonId, seasonId), eq(segments.day, 1)))
+    .orderBy(asc(segments.sortOrder))
+    .limit(1);
+  return seg ?? null;
+}
+
+/** Players (with season index) + the Friday segment, for the score-entry form. */
+export async function getDay1ScoreEntry(seasonId: number) {
+  const seg = await getDay1Segment(seasonId);
+  const playerRows = await db
     .select({
-      id: day1Scores.id,
-      playerId: day1Scores.playerId,
-      grossScore: day1Scores.grossScore,
-      netScore: day1Scores.netScore,
+      id: players.id,
       name: players.name,
-      handicap: players.handicap,
       photoUrl: players.photoUrl,
+      handicap: players.handicap,
     })
-    .from(day1Scores)
-    .innerJoin(players, eq(players.id, day1Scores.playerId))
-    .where(eq(day1Scores.seasonId, seasonId))
-    .orderBy(asc(day1Scores.netScore));
+    .from(players)
+    .orderBy(asc(players.name));
+  const idxRows = await db
+    .select({ playerId: seasonRosters.playerId, index: seasonRosters.handicapIndex })
+    .from(seasonRosters)
+    .where(eq(seasonRosters.seasonId, seasonId));
+  const idxBy = new Map(idxRows.map((r) => [r.playerId, r.index]));
+  return {
+    segment: seg
+      ? { rating: seg.rating, slope: seg.slope, par: seg.par, holes: seg.holes }
+      : null,
+    players: playerRows.map((p) => ({
+      id: p.id,
+      name: p.name,
+      photoUrl: p.photoUrl,
+      index: idxBy.get(p.id) ?? p.handicap,
+    })),
+  };
 }
 
 export async function submitDay1Score(input: z.input<typeof submitScoreSchema>) {
@@ -75,26 +142,15 @@ export async function submitDay1Score(input: z.input<typeof submitScoreSchema>) 
   await requireAdminOrSelf(data.playerId);
   const seasonId = await getCurrentSeasonId();
 
-  const [player] = await db
-    .select({ handicap: players.handicap })
-    .from(players)
-    .where(eq(players.id, data.playerId))
-    .limit(1);
-  if (!player) throw new Error("Player not found");
-
-  const netScore = data.grossScore - Math.floor(player.handicap / 2);
+  const seg = await getDay1Segment(seasonId);
+  if (!seg) throw new Error("No Day 1 round is configured for this season");
 
   const [row] = await db
-    .insert(day1Scores)
-    .values({
-      seasonId,
-      playerId: data.playerId,
-      grossScore: data.grossScore,
-      netScore,
-    })
+    .insert(segmentScores)
+    .values({ segmentId: seg.id, playerId: data.playerId, gross: data.grossScore })
     .onConflictDoUpdate({
-      target: [day1Scores.seasonId, day1Scores.playerId],
-      set: { grossScore: data.grossScore, netScore },
+      target: [segmentScores.segmentId, segmentScores.playerId],
+      set: { gross: data.grossScore },
     })
     .returning();
   return row;
@@ -140,6 +196,15 @@ export async function submitDay1Pick(input: z.input<typeof submitPickSchema>) {
   await requireAdminOrSelf(data.pickerPlayerId);
   const seasonId = await getCurrentSeasonId();
 
+  // Rankings are derived from stable Day-1 nets; compute once, then mutate in a tx.
+  const ranked = await fetchRankedLeaderboard(seasonId);
+  const picker = ranked.find((r) => r.id === data.pickerPlayerId);
+  const picked = ranked.find((r) => r.id === data.pickedPlayerId);
+  if (!picker) throw new Error("Picker not on leaderboard");
+  if (!picked) throw new Error("Picked player not on leaderboard");
+  if (picked.rank < 11)
+    throw new Error("Can only pick players ranked 11 or below");
+
   return db.transaction(async (tx) => {
     const [state] = await tx
       .select()
@@ -148,27 +213,8 @@ export async function submitDay1Pick(input: z.input<typeof submitPickSchema>) {
       .limit(1);
     if (!state) throw new Error("Season not initialized");
     if (state.day1PickingComplete) throw new Error("Picking is already complete");
-
-    const ranked = await tx
-      .select({
-        id: players.id,
-        rank: sql<number>`ROW_NUMBER() OVER (ORDER BY ${day1Scores.netScore} ASC, ${day1Scores.grossScore} ASC)`.mapWith(
-          Number,
-        ),
-      })
-      .from(players)
-      .innerJoin(day1Scores, eq(day1Scores.playerId, players.id))
-      .where(eq(day1Scores.seasonId, seasonId))
-      .orderBy(asc(day1Scores.netScore), asc(day1Scores.grossScore));
-
-    const picker = ranked.find((r) => r.id === data.pickerPlayerId);
-    const picked = ranked.find((r) => r.id === data.pickedPlayerId);
-    if (!picker) throw new Error("Picker not on leaderboard");
-    if (!picked) throw new Error("Picked player not on leaderboard");
     if (picker.rank !== state.nextPickerRank)
       throw new Error("Not this player's turn to pick");
-    if (picked.rank < 11)
-      throw new Error("Can only pick players ranked 11 or below");
 
     const existingTeams = await tx
       .select({ player2Id: day2Teams.player2Id })
@@ -178,13 +224,12 @@ export async function submitDay1Pick(input: z.input<typeof submitPickSchema>) {
       throw new Error("Player already picked");
     }
 
-    const teamName = `Team ${21 - picker.rank}`;
     await tx.insert(day2Teams).values({
       seasonId,
       player1Id: data.pickerPlayerId,
       player2Id: data.pickedPlayerId,
       pickOrder: picker.rank,
-      name: teamName,
+      name: `Team ${21 - picker.rank}`,
     });
 
     const nextRank = picker.rank - 1;

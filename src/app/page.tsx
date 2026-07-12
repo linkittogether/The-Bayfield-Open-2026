@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, ChevronRight, Flag, Settings, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { cn } from "@/lib/utils";
+import { formatNet } from "@/lib/format";
 import { listPlayers } from "@/lib/server/players";
 import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
 import { getDay3Matches } from "@/lib/server/day3";
@@ -289,7 +290,7 @@ function computeNextStep(args: {
       return {
         label: hasScored ? "View Day 1 leaderboard" : "Enter your Day 1 score",
         sub: hasScored
-          ? `Your net score: ${hasScored.netScore} · Rank #${hasScored.rank}`
+          ? `Your net score: ${formatNet(hasScored.netScore)} · Rank #${hasScored.rank}`
           : "9 holes · Your gross score goes in here",
         href: hasScored ? "/day1/leaderboard" : "/day1/scores",
         emoji: "🏌️",

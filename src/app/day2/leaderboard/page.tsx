@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { cn } from "@/lib/utils";
-import { ordinal } from "@/lib/format";
+import { formatNet, ordinal } from "@/lib/format";
 import { getDay2Leaderboard } from "@/lib/server/day2";
 import { getSeasonState } from "@/lib/server/tournament";
 import { getSeasonView } from "@/lib/server/seasons";
@@ -23,7 +23,7 @@ export default async function Day2LeaderboardPage() {
   ]);
 
   const userId = user?.kind === "player" ? user.player.id : null;
-  const allDone = lb.length > 0 && lb.every((e) => e.roundsComplete >= 3);
+  const allDone = lb.length > 0 && lb.every((e) => e.combinedNet != null);
 
   return (
     <AppShell title="Day 2 Leaderboard">
@@ -37,10 +37,14 @@ export default async function Day2LeaderboardPage() {
         </div>
       )}
 
+      <p className="text-xs text-muted-foreground mb-3">
+        Pairs ranked by combined net (Friday + Saturday, both partners).
+      </p>
+
       {lb.length === 0 ? (
         <div className="bg-muted rounded-2xl p-8 text-center">
           <Trophy size={40} className="mx-auto mb-3 text-muted-foreground" />
-          <p className="font-semibold text-muted-foreground">No teams yet</p>
+          <p className="font-semibold text-muted-foreground">No pairs yet</p>
           <p className="text-sm text-muted-foreground mt-1">
             Complete Day 1 partner selection first
           </p>
@@ -54,7 +58,6 @@ export default async function Day2LeaderboardPage() {
             const isMe =
               userId !== null &&
               (entry.player1Id === userId || entry.player2Id === userId);
-            const rounds = entry.roundScores;
             return (
               <div
                 key={entry.id}
@@ -62,16 +65,14 @@ export default async function Day2LeaderboardPage() {
                   "rounded-xl border overflow-hidden",
                   isMe
                     ? "bg-primary/5 border-primary ring-2 ring-primary/30"
-                    : i === 0
+                    : i === 0 && entry.combinedNet != null
                       ? "bg-white border-gold ring-1 ring-gold/50"
-                      : i === 1
-                        ? "bg-white border-gray-300"
-                        : "bg-white border-border",
+                      : "bg-white border-border",
                 )}
               >
                 <div className="p-3 flex items-center gap-3">
                   <div className="w-8 text-center font-bold text-sm">
-                    {medals[i] || ordinal(i + 1)}
+                    {entry.combinedNet != null ? medals[i] || ordinal(i + 1) : "—"}
                   </div>
                   <div className="flex -space-x-2 flex-shrink-0">
                     <PlayerAvatar name={entry.player1Name} photoUrl={entry.player1Photo} size="sm" />
@@ -82,7 +83,7 @@ export default async function Day2LeaderboardPage() {
                       {entry.player1Name} & {entry.player2Name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {entry.roundsComplete}/3 rounds · HCP {entry.player1Handicap}/{entry.player2Handicap}
+                      Index {entry.player1Handicap}/{entry.player2Handicap}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
@@ -93,33 +94,23 @@ export default async function Day2LeaderboardPage() {
                     )}
                     <div className="text-right">
                       <p className="font-bold text-xl leading-none">
-                        {entry.totalNetScore || "—"}
+                        {formatNet(entry.combinedNet)}
                       </p>
                       <p className="text-xs text-muted-foreground">net</p>
                     </div>
                   </div>
                 </div>
 
-                {rounds.length > 0 && (
-                  <div className="border-t border-border px-3 py-2 grid grid-cols-3 gap-2">
-                    {[1, 2, 3].map((r) => {
-                      const rs = rounds.find((x) => x.roundNumber === r);
-                      return (
-                        <div key={r} className="text-center">
-                          <p className="text-xs text-muted-foreground">R{r}</p>
-                          <p
-                            className={cn(
-                              "text-sm font-semibold",
-                              rs ? "text-foreground" : "text-border",
-                            )}
-                          >
-                            {rs ? rs.netScore : "—"}
-                          </p>
-                        </div>
-                      );
-                    })}
+                <div className="border-t border-border px-3 py-2 grid grid-cols-2 gap-2">
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground truncate">{entry.player1Name}</p>
+                    <p className="text-sm font-semibold">{formatNet(entry.player1Net)}</p>
                   </div>
-                )}
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground truncate">{entry.player2Name}</p>
+                    <p className="text-sm font-semibold">{formatNet(entry.player2Net)}</p>
+                  </div>
+                </div>
               </div>
             );
           })}
@@ -129,9 +120,9 @@ export default async function Day2LeaderboardPage() {
       {allDone && (
         <div className="mt-5 bg-primary text-white rounded-2xl p-5 text-center">
           <Trophy size={36} className="mx-auto mb-2 text-gold" />
-          <p className="font-bold text-xl font-heading">Bayfield Open Champions!</p>
+          <p className="font-bold text-xl font-heading">Pairs Champions!</p>
           <p className="text-green-200 text-sm mt-1">
-            {lb[0].player1Name} & {lb[0].player2Name} with {lb[0].totalNetScore} net
+            {lb[0].player1Name} & {lb[0].player2Name} with {formatNet(lb[0].combinedNet)} net
           </p>
           {!readOnly && !state?.day2DraftComplete && (
             <Button

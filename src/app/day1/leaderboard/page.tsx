@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { cn } from "@/lib/utils";
-import { ordinal } from "@/lib/format";
+import { formatNet, ordinal } from "@/lib/format";
 import { getDay1Leaderboard } from "@/lib/server/day1";
 import { listPlayers } from "@/lib/server/players";
 import { getSeasonState } from "@/lib/server/tournament";
@@ -77,7 +77,7 @@ export default async function Day1LeaderboardPage() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-lg leading-none">{entry.netScore}</p>
+                  <p className="font-bold text-lg leading-none">{formatNet(entry.netScore)}</p>
                   <p className="text-xs text-muted-foreground">net</p>
                 </div>
                 {isMe && (

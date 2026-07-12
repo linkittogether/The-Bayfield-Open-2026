@@ -1,6 +1,6 @@
 import { Lock } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { getDay2Leaderboard, getDay2Teams } from "@/lib/server/day2";
+import { getDay2ScoreEntry } from "@/lib/server/day2";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { Day2ScoresForm } from "./scores-form";
@@ -21,10 +21,9 @@ export default async function Day2ScoresPage() {
     );
   }
 
-  const [user, teams, lb] = await Promise.all([
+  const [user, entry] = await Promise.all([
     getCurrentUser(),
-    getDay2Teams(season.id),
-    getDay2Leaderboard(season.id),
+    getDay2ScoreEntry(season.id),
   ]);
 
   if (!user) {
@@ -40,39 +39,23 @@ export default async function Day2ScoresPage() {
 
   const isAdmin = user.kind === "admin";
   const userId = user.kind === "player" ? user.player.id : null;
-  const myTeam = userId
-    ? teams.find((t) => t.player1Id === userId || t.player2Id === userId)
-    : null;
-
-  if (user.kind === "player" && !myTeam && teams.length > 0) {
-    return (
-      <AppShell title="Day 2 — Enter Score" showBack backTo="/day2/leaderboard">
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-2">
-          <Lock size={16} className="text-amber-700 mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-amber-800">
-            You don&apos;t have a Day 2 team yet. Partner selection must complete first.
-          </p>
-        </div>
-      </AppShell>
-    );
-  }
-
-  const visibleTeams = isAdmin ? teams : myTeam ? [myTeam] : [];
-  const lbByTeamId = new Map(lb.map((t) => [t.id, t]));
 
   return (
     <AppShell title="Day 2 — Enter Score" showBack backTo="/day2/leaderboard">
+      <p className="text-xs text-muted-foreground mb-4">
+        Saturday is individual stroke play — enter your own gross for each round.
+      </p>
       <Day2ScoresForm
-        teams={visibleTeams}
-        roundsByTeam={Object.fromEntries(
-          [...lbByTeamId.entries()].map(([id, t]) => [
-            id,
-            t.roundScores.map((r) => ({
-              round: r.roundNumber,
-              netScore: r.netScore,
-            })),
-          ]),
-        )}
+        segments={entry.segments.map((s) => ({
+          id: s.id,
+          label: s.label,
+          holes: s.holes,
+          rating: s.rating,
+          slope: s.slope,
+          par: s.par,
+        }))}
+        players={entry.players}
+        scores={entry.scores}
         userId={userId}
         isAdmin={isAdmin}
       />

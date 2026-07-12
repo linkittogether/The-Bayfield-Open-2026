@@ -1,25 +1,26 @@
 "use server";
 
-import { aliasedTable, and, asc, eq, sql } from "drizzle-orm";
+import { aliasedTable, and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
-  day1Scores,
-  day2RoundScores,
   day2Teams,
   players,
   seasonRosters,
   seasons,
+  segments,
+  segmentScores,
   teams,
 } from "@/db/schema";
-import { requireAdmin, requireAdminOrTeamMember } from "./auth-guards";
+import { requireAdmin, requireAdminOrSelf } from "./auth-guards";
 import { getCurrentSeasonId } from "./seasons";
+import { getSeasonScoring, getSegments } from "./scoring";
 
-const submitRoundSchema = z.object({
-  teamId: z.number().int().positive(),
-  roundNumber: z.number().int().min(1).max(3),
-  player1Gross: z.number().int().min(0),
-  player2Gross: z.number().int().min(0),
+// A single player's gross on one stroke-play segment (own-ball, individual).
+const submitSegmentSchema = z.object({
+  playerId: z.number().int().positive(),
+  segmentId: z.number().int().positive(),
+  grossScore: z.number().int().min(0),
 });
 
 // teamName carries the team slug (same values the draft client already sends).
@@ -46,6 +47,7 @@ const teamWithPlayersColumns = {
   player2Photo: p2.photoUrl,
 };
 
+/** The Friday-draft pairs for a season. */
 export async function getDay2Teams(seasonId: number) {
   return db
     .select(teamWithPlayersColumns)
@@ -56,101 +58,135 @@ export async function getDay2Teams(seasonId: number) {
     .orderBy(asc(day2Teams.pickOrder));
 }
 
-export async function getDay2Leaderboard(seasonId: number) {
-  const teamRows = await db
-    .select({
-      ...teamWithPlayersColumns,
-      totalNetScore: sql<number>`COALESCE(SUM(${day2RoundScores.netScore}), 0)`.mapWith(
-        Number,
-      ),
-      roundsComplete: sql<number>`COUNT(${day2RoundScores.id})`.mapWith(Number),
-    })
-    .from(day2Teams)
-    .innerJoin(p1, eq(p1.id, day2Teams.player1Id))
-    .innerJoin(p2, eq(p2.id, day2Teams.player2Id))
-    .leftJoin(day2RoundScores, eq(day2RoundScores.teamId, day2Teams.id))
-    .where(eq(day2Teams.seasonId, seasonId))
-    .groupBy(day2Teams.id, p1.id, p2.id)
-    .orderBy(
-      sql`COALESCE(SUM(${day2RoundScores.netScore}), 0) ASC`,
-      sql`COUNT(${day2RoundScores.id}) DESC`,
-    );
-
-  // attach round details per team (scoped to this season's teams)
-  const allRounds = await db
-    .select({
-      id: day2RoundScores.id,
-      teamId: day2RoundScores.teamId,
-      roundNumber: day2RoundScores.roundNumber,
-      player1Gross: day2RoundScores.player1Gross,
-      player2Gross: day2RoundScores.player2Gross,
-      netScore: day2RoundScores.netScore,
-    })
-    .from(day2RoundScores)
-    .innerJoin(day2Teams, eq(day2Teams.id, day2RoundScores.teamId))
-    .where(eq(day2Teams.seasonId, seasonId))
-    .orderBy(asc(day2RoundScores.teamId), asc(day2RoundScores.roundNumber));
-  const byTeam = new Map<number, typeof allRounds>();
-  for (const r of allRounds) {
-    if (!byTeam.has(r.teamId)) byTeam.set(r.teamId, []);
-    byTeam.get(r.teamId)!.push(r);
-  }
-  return teamRows.map((t) => ({
-    ...t,
-    roundScores: byTeam.get(t.id) ?? [],
-  }));
+export interface Day2PairStanding {
+  id: number;
+  name: string | null;
+  pickOrder: number;
+  player1Id: number;
+  player1Name: string;
+  player1Handicap: number;
+  player1Photo: string | null;
+  player1Net: number | null;
+  player2Id: number;
+  player2Name: string;
+  player2Handicap: number;
+  player2Photo: string | null;
+  player2Net: number | null;
+  /** Sum of both partners' cumulative nets (Fri + Sat). Null until both have nets. */
+  combinedNet: number | null;
+  segmentsScored: number;
 }
 
-export async function getDay2TeamScores(teamId: number) {
-  return db
-    .select()
-    .from(day2RoundScores)
-    .where(eq(day2RoundScores.teamId, teamId))
-    .orderBy(asc(day2RoundScores.roundNumber));
+/**
+ * Day-2 standings: the Friday-draft pairs ranked by combined cumulative net —
+ * each partner's own-ball net across every stroke-play segment (Friday + Saturday),
+ * summed. Lowest combined net wins.
+ */
+export async function getDay2Leaderboard(
+  seasonId: number,
+): Promise<Day2PairStanding[]> {
+  const [pairs, scoring] = await Promise.all([
+    getDay2Teams(seasonId),
+    getSeasonScoring(seasonId),
+  ]);
+
+  const rows: Day2PairStanding[] = pairs.map((t) => {
+    const s1 = scoring.byPlayer.get(t.player1Id);
+    const s2 = scoring.byPlayer.get(t.player2Id);
+    const n1 = s1?.cumulativeNet ?? null;
+    const n2 = s2?.cumulativeNet ?? null;
+    const combinedNet = n1 != null && n2 != null ? n1 + n2 : null;
+    return {
+      id: t.id,
+      name: t.name,
+      pickOrder: t.pickOrder,
+      player1Id: t.player1Id,
+      player1Name: t.player1Name,
+      player1Handicap: s1?.index ?? t.player1Handicap,
+      player1Photo: t.player1Photo,
+      player1Net: n1,
+      player2Id: t.player2Id,
+      player2Name: t.player2Name,
+      player2Handicap: s2?.index ?? t.player2Handicap,
+      player2Photo: t.player2Photo,
+      player2Net: n2,
+      combinedNet,
+      segmentsScored: (s1?.segmentsScored ?? 0) + (s2?.segmentsScored ?? 0),
+    };
+  });
+
+  rows.sort((a, b) => {
+    if (a.combinedNet == null && b.combinedNet == null) return 0;
+    if (a.combinedNet == null) return 1;
+    if (b.combinedNet == null) return -1;
+    return a.combinedNet - b.combinedNet;
+  });
+  return rows;
 }
 
-export async function submitDay2RoundScore(
-  input: z.input<typeof submitRoundSchema>,
+/** Segments, players (with season index), and existing grosses for score entry. */
+export async function getDay2ScoreEntry(seasonId: number) {
+  const segs = await getSegments(seasonId, 2);
+  const playerRows = await db
+    .select({
+      id: players.id,
+      name: players.name,
+      photoUrl: players.photoUrl,
+      handicap: players.handicap,
+    })
+    .from(players)
+    .orderBy(asc(players.name));
+  const idxRows = await db
+    .select({ playerId: seasonRosters.playerId, index: seasonRosters.handicapIndex })
+    .from(seasonRosters)
+    .where(eq(seasonRosters.seasonId, seasonId));
+  const idxByPlayer = new Map(idxRows.map((r) => [r.playerId, r.index]));
+
+  const scoreRows = await db
+    .select({
+      segmentId: segmentScores.segmentId,
+      playerId: segmentScores.playerId,
+      gross: segmentScores.gross,
+    })
+    .from(segmentScores)
+    .innerJoin(segments, eq(segments.id, segmentScores.segmentId))
+    .where(and(eq(segments.seasonId, seasonId), eq(segments.day, 2)));
+
+  return {
+    segments: segs,
+    players: playerRows.map((p) => ({
+      id: p.id,
+      name: p.name,
+      photoUrl: p.photoUrl,
+      index: idxByPlayer.get(p.id) ?? p.handicap,
+    })),
+    scores: scoreRows,
+  };
+}
+
+/** Enter/overwrite a player's gross for one stroke-play segment (own ball). */
+export async function submitSegmentScore(
+  input: z.input<typeof submitSegmentSchema>,
 ) {
-  const data = submitRoundSchema.parse(input);
-  await requireAdminOrTeamMember(data.teamId);
+  const data = submitSegmentSchema.parse(input);
+  await requireAdminOrSelf(data.playerId);
   const seasonId = await getCurrentSeasonId();
 
-  const [team] = await db
-    .select({
-      h1: p1.handicap,
-      h2: p2.handicap,
-      seasonId: day2Teams.seasonId,
-    })
-    .from(day2Teams)
-    .innerJoin(p1, eq(p1.id, day2Teams.player1Id))
-    .innerJoin(p2, eq(p2.id, day2Teams.player2Id))
-    .where(eq(day2Teams.id, data.teamId))
+  const [seg] = await db
+    .select({ seasonId: segments.seasonId })
+    .from(segments)
+    .where(eq(segments.id, data.segmentId))
     .limit(1);
-  if (!team) throw new Error("Team not found");
-  if (team.seasonId !== seasonId)
-    throw new Error("Cannot score a team from a past season");
-
-  const net1 = data.player1Gross - Math.floor(team.h1 / 2);
-  const net2 = data.player2Gross - Math.floor(team.h2 / 2);
-  const netScore = net1 + net2;
+  if (!seg) throw new Error("Unknown segment");
+  if (seg.seasonId !== seasonId)
+    throw new Error("Cannot score a segment from a past season");
 
   const [row] = await db
-    .insert(day2RoundScores)
-    .values({
-      teamId: data.teamId,
-      roundNumber: data.roundNumber,
-      player1Gross: data.player1Gross,
-      player2Gross: data.player2Gross,
-      netScore,
-    })
+    .insert(segmentScores)
+    .values({ segmentId: data.segmentId, playerId: data.playerId, gross: data.grossScore })
     .onConflictDoUpdate({
-      target: [day2RoundScores.teamId, day2RoundScores.roundNumber],
-      set: {
-        player1Gross: data.player1Gross,
-        player2Gross: data.player2Gross,
-        netScore,
-      },
+      target: [segmentScores.segmentId, segmentScores.playerId],
+      set: { gross: data.grossScore },
     })
     .returning();
   return row;
@@ -163,25 +199,18 @@ export async function getDay2DraftOverview(seasonId: number) {
     .where(eq(seasons.id, seasonId))
     .limit(1);
 
-  const winners = await db
-    .select({
-      teamId: day2Teams.id,
-      player1Id: p1.id,
-      player1Name: p1.name,
-      player2Id: p2.id,
-      player2Name: p2.name,
-      totalNetScore: sql<number>`COALESCE(SUM(${day2RoundScores.netScore}), 0)`.mapWith(
-        Number,
-      ),
-    })
-    .from(day2Teams)
-    .innerJoin(p1, eq(p1.id, day2Teams.player1Id))
-    .innerJoin(p2, eq(p2.id, day2Teams.player2Id))
-    .leftJoin(day2RoundScores, eq(day2RoundScores.teamId, day2Teams.id))
-    .where(eq(day2Teams.seasonId, seasonId))
-    .groupBy(day2Teams.id, p1.id, p1.name, p2.id, p2.name)
-    .orderBy(sql`COALESCE(SUM(${day2RoundScores.netScore}), 0) ASC`)
-    .limit(2);
+  const standings = await getDay2Leaderboard(seasonId);
+  const winners = standings
+    .filter((s) => s.combinedNet != null)
+    .slice(0, 2)
+    .map((s) => ({
+      teamId: s.id,
+      player1Id: s.player1Id,
+      player1Name: s.player1Name,
+      player2Id: s.player2Id,
+      player2Name: s.player2Name,
+      totalNetScore: s.combinedNet as number,
+    }));
 
   const allPlayers = await db
     .select({
@@ -256,12 +285,12 @@ export async function completeDay2Draft() {
   const seasonId = await getCurrentSeasonId();
 
   // Rule: every player who posted a Day-1 score this season must have a roster
-  // entry (either assigned to a team or explicitly marked absent), and both
-  // teams must have at least one active (non-absent) member.
-  const scored = await db
-    .select({ playerId: day1Scores.playerId })
-    .from(day1Scores)
-    .where(eq(day1Scores.seasonId, seasonId));
+  // entry (assigned or explicitly absent), and both teams need ≥1 active member.
+  const scoring = await getSeasonScoring(seasonId);
+  const scoredPlayerIds = [...scoring.byPlayer.values()]
+    .filter((p) => p.day1Gross != null)
+    .map((p) => p.playerId);
+
   const roster = await db
     .select({
       playerId: seasonRosters.playerId,
@@ -272,7 +301,7 @@ export async function completeDay2Draft() {
     .where(eq(seasonRosters.seasonId, seasonId));
 
   const rosterByPlayer = new Map(roster.map((r) => [r.playerId, r]));
-  const missing = scored.filter((s) => !rosterByPlayer.has(s.playerId));
+  const missing = scoredPlayerIds.filter((id) => !rosterByPlayer.has(id));
   if (missing.length) {
     throw new Error(
       `${missing.length} player(s) with a Day 1 score have no team assignment`,

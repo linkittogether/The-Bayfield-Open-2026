@@ -2,8 +2,7 @@ import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
-import { listPlayers } from "@/lib/server/players";
-import { getDay1Scores } from "@/lib/server/day1";
+import { getDay1ScoreEntry, getDay1Scores } from "@/lib/server/day1";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { ScoresForm } from "./scores-form";
@@ -43,8 +42,8 @@ export default async function Day1ScoresPage() {
     );
   }
 
-  const [players, scores] = await Promise.all([
-    listPlayers(),
+  const [entry, scores] = await Promise.all([
+    getDay1ScoreEntry(season.id),
     getDay1Scores(season.id),
   ]);
   const submittedIds = scores.map((s) => s.playerId);
@@ -54,12 +53,8 @@ export default async function Day1ScoresPage() {
   return (
     <AppShell title="Day 1 — Enter Score" showBack backTo="/day1/leaderboard">
       <ScoresForm
-        players={players.map((p) => ({
-          id: p.id,
-          name: p.name,
-          photoUrl: p.photoUrl,
-          handicap: p.handicap,
-        }))}
+        players={entry.players}
+        segment={entry.segment}
         submittedIds={submittedIds}
         lockedPlayerId={lockedPlayerId}
         isAdmin={isAdmin}

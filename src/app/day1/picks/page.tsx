@@ -1,7 +1,7 @@
 import { ChevronRight, Lock, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PlayerAvatar } from "@/components/player-avatar";
-import { ordinal } from "@/lib/format";
+import { formatNet, ordinal } from "@/lib/format";
 import { getDay1PicksOverview } from "@/lib/server/day1";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
@@ -81,7 +81,7 @@ export default async function Day1PicksPage() {
               <div>
                 <p className="font-bold text-lg font-heading">{data.nextPicker.name}</p>
                 <p className="text-green-200 text-sm">
-                  {ordinal(data.nextPickerRank)} place · Net {data.nextPicker.netScore}
+                  {ordinal(data.nextPickerRank)} place · Net {formatNet(data.nextPicker.netScore)}
                 </p>
               </div>
             </div>
@@ -111,7 +111,7 @@ export default async function Day1PicksPage() {
                 <div className="flex-1 text-left min-w-0">
                   <p className="font-semibold text-sm truncate">{p.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    Rank #{p.rank} · Net {p.netScore} · HCP {p.handicap}
+                    Rank #{p.rank} · Net {formatNet(p.netScore)} · HCP {p.handicap}
                   </p>
                 </div>
                 <ChevronRight size={16} className="text-muted-foreground" />

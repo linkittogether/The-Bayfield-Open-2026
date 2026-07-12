@@ -7,22 +7,33 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { cn } from "@/lib/utils";
+import { netForSegment } from "@/lib/handicap";
+import { formatNet } from "@/lib/format";
 import { submitDay1Score } from "@/lib/server/day1";
 
 interface PlayerLite {
   id: number;
   name: string;
   photoUrl: string | null;
-  handicap: number;
+  index: number;
+}
+
+interface SegmentLite {
+  rating: number | null;
+  slope: number | null;
+  par: number | null;
+  holes: number;
 }
 
 export function ScoresForm({
   players,
+  segment,
   submittedIds,
   lockedPlayerId,
   isAdmin,
 }: {
   players: PlayerLite[];
+  segment: SegmentLite | null;
   submittedIds: number[];
   lockedPlayerId: number | null;
   isAdmin: boolean;
@@ -36,7 +47,15 @@ export function ScoresForm({
   const [pending, startTransition] = useTransition();
 
   const player = players.find((p) => p.id === selected);
-  const netPreview = player ? gross - Math.floor(player.handicap / 2) : null;
+  const netPreview =
+    player && segment
+      ? netForSegment(gross, player.index, {
+          rating: segment.rating,
+          slope: segment.slope,
+          par: segment.par,
+          holes: segment.holes as 9 | 18,
+        })
+      : null;
 
   function submit() {
     if (!selected) return setError("Select a player");
@@ -69,7 +88,7 @@ export function ScoresForm({
                 <PlayerAvatar name={me.name} photoUrl={me.photoUrl} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{me.name}</p>
-                  <p className="text-xs text-muted-foreground">HCP {me.handicap}</p>
+                  <p className="text-xs text-muted-foreground">Index {me.index}</p>
                 </div>
                 {submitted.has(me.id) && <Check size={16} className="text-green-500" />}
               </div>
@@ -106,7 +125,7 @@ export function ScoresForm({
                 <PlayerAvatar name={p.name} photoUrl={p.photoUrl} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm truncate">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">HCP {p.handicap}</p>
+                  <p className="text-xs text-muted-foreground">Index {p.index}</p>
                 </div>
                 {submitted.has(p.id) && <Check size={16} className="text-green-500" />}
               </button>
@@ -135,14 +154,15 @@ export function ScoresForm({
               <Plus size={20} />
             </button>
           </div>
-          {netPreview !== null && (
-            <p className="text-sm text-muted-foreground mt-2 text-center">
-              Net score: <strong className="text-foreground">{netPreview}</strong>
-              <span className="ml-1 text-xs">
-                (HCP {player?.handicap} ÷ 2 = {Math.floor((player?.handicap || 0) / 2)})
-              </span>
-            </p>
-          )}
+          <p className="text-sm text-muted-foreground mt-2 text-center">
+            {netPreview !== null ? (
+              <>
+                Net score: <strong className="text-foreground">{formatNet(netPreview)}</strong>
+              </>
+            ) : (
+              <>Net will be computed once course data is set for this round.</>
+            )}
+          </p>
         </div>
       )}
 

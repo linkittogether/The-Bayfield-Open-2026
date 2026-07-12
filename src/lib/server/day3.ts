@@ -1,16 +1,18 @@
 "use server";
 
-import { aliasedTable, and, asc, eq, sql } from "drizzle-orm";
+import { aliasedTable, and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
   day3Holes,
   day3Matches,
-  day3Players,
   players,
-  tournamentState,
+  seasonRosters,
+  seasons,
+  teams,
 } from "@/db/schema";
 import { requireAdmin, requireAdminOrMatchPlayer } from "./auth-guards";
+import { getCurrentSeasonId } from "./seasons";
 
 const matchInputSchema = z.object({
   matchNumber: z.number().int().positive(),
@@ -31,21 +33,24 @@ const submitHoleSchema = z.object({
 const tp = aliasedTable(players, "tp");
 const sp = aliasedTable(players, "sp");
 
-export async function getDay3Teams() {
+export async function getDay3Teams(seasonId: number) {
   const rows = await db
     .select({
-      teamName: day3Players.teamName,
-      isCaptain: day3Players.isCaptain,
+      teamName: teams.slug,
+      isCaptain: seasonRosters.isCaptain,
+      absent: seasonRosters.absent,
       playerId: players.id,
       name: players.name,
       photoUrl: players.photoUrl,
       handicap: players.handicap,
     })
-    .from(day3Players)
-    .innerJoin(players, eq(players.id, day3Players.playerId))
+    .from(seasonRosters)
+    .innerJoin(teams, eq(teams.id, seasonRosters.teamId))
+    .innerJoin(players, eq(players.id, seasonRosters.playerId))
+    .where(eq(seasonRosters.seasonId, seasonId))
     .orderBy(
-      asc(day3Players.teamName),
-      sql`${day3Players.isCaptain} DESC`,
+      asc(teams.slug),
+      sql`${seasonRosters.isCaptain} DESC`,
       asc(players.name),
     );
 
@@ -56,7 +61,7 @@ export async function getDay3Teams() {
   return { truffleHogs, myceliumSyndicate };
 }
 
-export async function getDay3Matches() {
+export async function getDay3Matches(seasonId: number) {
   return db
     .select({
       id: day3Matches.id,
@@ -83,6 +88,7 @@ export async function getDay3Matches() {
     .from(day3Matches)
     .innerJoin(tp, eq(tp.id, day3Matches.trufflePlayerId))
     .innerJoin(sp, eq(sp.id, day3Matches.syndicatePlayerId))
+    .where(eq(day3Matches.seasonId, seasonId))
     .orderBy(asc(day3Matches.matchNumber));
 }
 
@@ -115,12 +121,17 @@ export async function getDay3Match(id: number) {
 export async function setDay3Matches(input: z.input<typeof setMatchesSchema>) {
   await requireAdmin();
   const data = setMatchesSchema.parse(input);
+  const seasonId = await getCurrentSeasonId();
   return db.transaction(async (tx) => {
-    await tx.delete(day3Holes);
-    await tx.delete(day3Matches);
+    const matchIds = tx
+      .select({ id: day3Matches.id })
+      .from(day3Matches)
+      .where(eq(day3Matches.seasonId, seasonId));
+    await tx.delete(day3Holes).where(inArray(day3Holes.matchId, matchIds));
+    await tx.delete(day3Matches).where(eq(day3Matches.seasonId, seasonId));
     const inserted = await tx
       .insert(day3Matches)
-      .values(data.matches)
+      .values(data.matches.map((m) => ({ ...m, seasonId })))
       .returning();
     return inserted;
   });
@@ -129,6 +140,15 @@ export async function setDay3Matches(input: z.input<typeof setMatchesSchema>) {
 export async function submitDay3Hole(input: z.input<typeof submitHoleSchema>) {
   const data = submitHoleSchema.parse(input);
   await requireAdminOrMatchPlayer(data.matchId);
+  const seasonId = await getCurrentSeasonId();
+  const [match] = await db
+    .select({ seasonId: day3Matches.seasonId })
+    .from(day3Matches)
+    .where(eq(day3Matches.id, data.matchId))
+    .limit(1);
+  if (!match || match.seasonId !== seasonId)
+    throw new Error("Cannot score a match from a past season");
+
   const [row] = await db
     .insert(day3Holes)
     .values({
@@ -146,6 +166,15 @@ export async function submitDay3Hole(input: z.input<typeof submitHoleSchema>) {
 
 export async function deleteDay3Hole(matchId: number, holeNumber: number) {
   await requireAdminOrMatchPlayer(matchId);
+  const seasonId = await getCurrentSeasonId();
+  const [match] = await db
+    .select({ seasonId: day3Matches.seasonId })
+    .from(day3Matches)
+    .where(eq(day3Matches.id, matchId))
+    .limit(1);
+  if (!match || match.seasonId !== seasonId)
+    throw new Error("Cannot modify a match from a past season");
+
   const result = await db
     .delete(day3Holes)
     .where(
@@ -154,8 +183,7 @@ export async function deleteDay3Hole(matchId: number, holeNumber: number) {
   return { rowsAffected: result.count };
 }
 
-export async function getDay3Leaderboard() {
-  // per-match aggregated counts
+export async function getDay3Leaderboard(seasonId: number) {
   const perMatch = await db
     .select({
       id: day3Matches.id,
@@ -177,6 +205,7 @@ export async function getDay3Leaderboard() {
     .innerJoin(tp, eq(tp.id, day3Matches.trufflePlayerId))
     .innerJoin(sp, eq(sp.id, day3Matches.syndicatePlayerId))
     .leftJoin(day3Holes, eq(day3Holes.matchId, day3Matches.id))
+    .where(eq(day3Matches.seasonId, seasonId))
     .groupBy(day3Matches.id, tp.name, sp.name)
     .orderBy(asc(day3Matches.matchNumber));
 
@@ -208,9 +237,10 @@ export async function getDay3Leaderboard() {
 
 export async function completeDay3() {
   await requireAdmin();
+  const seasonId = await getCurrentSeasonId();
   await db
-    .update(tournamentState)
+    .update(seasons)
     .set({ day3Complete: true, currentDay: 3 })
-    .where(eq(tournamentState.id, 1));
+    .where(eq(seasons.id, seasonId));
   return { ok: true };
 }

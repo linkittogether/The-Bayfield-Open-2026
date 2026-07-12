@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { db } from "./index";
-import { admins, tournamentState } from "./schema";
+import { admins, seasons, teams } from "./schema";
 
 const DEFAULT_ADMIN_USERNAME = "admin";
 const DEFAULT_ADMIN_CODE = "BAYFIELD2026";
@@ -14,11 +14,20 @@ async function main() {
     .onConflictDoNothing({ target: admins.username });
 
   await db
-    .insert(tournamentState)
-    .values({ id: 1, currentDay: 1 })
-    .onConflictDoNothing({ target: tournamentState.id });
+    .insert(teams)
+    .values([
+      { name: "Truffle Hogs", slug: "truffle_hogs" },
+      { name: "The Mycelium Syndicate", slug: "mycelium_syndicate" },
+    ])
+    .onConflictDoNothing({ target: teams.slug });
 
-  console.log("Seed complete: admin + tournament_state row 1");
+  const year = new Date().getFullYear();
+  await db
+    .insert(seasons)
+    .values({ year, isCurrent: true, currentDay: 1 })
+    .onConflictDoNothing({ target: seasons.year });
+
+  console.log(`Seed complete: admin + teams + ${year} season`);
 }
 
 main()

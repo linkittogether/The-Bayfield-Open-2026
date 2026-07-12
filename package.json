@@ -15,7 +15,8 @@
     "storage:setup": "tsx --env-file=.env.local scripts/setup-storage.ts",
     "migrate:replit": "tsx --env-file=.env.local scripts/migrate-from-replit.ts",
     "grint:friends": "tsx --env-file=.env.local scripts/grint-friends.ts",
-    "grint:handicaps": "tsx --env-file=.env.local scripts/grint-handicaps.ts"
+    "grint:handicaps": "tsx --env-file=.env.local scripts/grint-handicaps.ts",
+    "backfill:seasons": "tsx --env-file=.env.local scripts/backfill-seasons.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

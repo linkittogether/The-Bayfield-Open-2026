@@ -4,23 +4,25 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getDay3Leaderboard, getDay3Matches, getDay3Teams } from "@/lib/server/day3";
+import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 
 export const metadata = { title: "Day 3 — Huron Cup" };
 
 export default async function Day3LeaderboardPage() {
+  const { viewed: season, readOnly } = await getSeasonView();
   const [user, lb, matches, teams] = await Promise.all([
     getCurrentUser(),
-    getDay3Leaderboard(),
-    getDay3Matches(),
-    getDay3Teams(),
+    getDay3Leaderboard(season.id),
+    getDay3Matches(season.id),
+    getDay3Teams(season.id),
   ]);
 
   const isAdmin = user?.kind === "admin";
   const userId = user?.kind === "player" ? user.player.id : null;
   const allRoster = [...teams.truffleHogs, ...teams.myceliumSyndicate];
   const isCaptain = userId !== null && allRoster.some((p) => p.playerId === userId && p.isCaptain);
-  const canSetupMatches = isAdmin || isCaptain;
+  const canSetupMatches = !readOnly && (isAdmin || isCaptain);
 
   const s = lb.summary;
   const truffleWins = s.truffleMatchWins;
@@ -91,7 +93,7 @@ export default async function Day3LeaderboardPage() {
                 ? "🍄 Mycelium Syndicate Wins!"
                 : "It's a Draw!"}
           </p>
-          <p className="text-sm mt-1 text-muted-foreground">Huron Cup Champions 2026</p>
+          <p className="text-sm mt-1 text-muted-foreground">Huron Cup Champions {season.year}</p>
         </div>
       )}
 

@@ -1,19 +1,24 @@
 import { Shield } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { getDay3Teams } from "@/lib/server/day3";
+import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { SetupBuilder } from "./setup-builder";
 
 export const metadata = { title: "Day 3 — Match Setup" };
 
 export default async function Day3SetupPage() {
-  const [user, teams] = await Promise.all([getCurrentUser(), getDay3Teams()]);
+  const { viewed: season, readOnly } = await getSeasonView();
+  const [user, teams] = await Promise.all([
+    getCurrentUser(),
+    getDay3Teams(season.id),
+  ]);
 
   const isAdmin = user?.kind === "admin";
   const userId = user?.kind === "player" ? user.player.id : null;
   const allRoster = [...teams.truffleHogs, ...teams.myceliumSyndicate];
   const isCaptain = userId !== null && allRoster.some((p) => p.playerId === userId && p.isCaptain);
-  const canSetup = isAdmin || isCaptain;
+  const canSetup = !readOnly && (isAdmin || isCaptain);
 
   if (!canSetup) {
     return (
@@ -35,8 +40,12 @@ export default async function Day3SetupPage() {
   return (
     <AppShell title="Match Setup" showBack backTo="/day3/leaderboard">
       <SetupBuilder
-        truffle={teams.truffleHogs.map((p) => ({ id: p.playerId, name: p.name }))}
-        syndicate={teams.myceliumSyndicate.map((p) => ({ id: p.playerId, name: p.name }))}
+        truffle={teams.truffleHogs
+          .filter((p) => !p.absent)
+          .map((p) => ({ id: p.playerId, name: p.name }))}
+        syndicate={teams.myceliumSyndicate
+          .filter((p) => !p.absent)
+          .map((p) => ({ id: p.playerId, name: p.name }))}
       />
     </AppShell>
   );

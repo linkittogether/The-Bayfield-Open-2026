@@ -1,16 +1,30 @@
 import { Lock } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { getDay2Leaderboard, getDay2Teams } from "@/lib/server/day2";
+import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { Day2ScoresForm } from "./scores-form";
 
 export const metadata = { title: "Day 2 — Enter Score" };
 
 export default async function Day2ScoresPage() {
+  const { viewed: season, readOnly } = await getSeasonView();
+
+  if (readOnly) {
+    return (
+      <AppShell title="Day 2 — Enter Score" showBack backTo="/day2/leaderboard">
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          You&apos;re viewing the {season.year} season, which is read-only.
+          Switch to the current season to enter scores.
+        </div>
+      </AppShell>
+    );
+  }
+
   const [user, teams, lb] = await Promise.all([
     getCurrentUser(),
-    getDay2Teams(),
-    getDay2Leaderboard(),
+    getDay2Teams(season.id),
+    getDay2Leaderboard(season.id),
   ]);
 
   if (!user) {

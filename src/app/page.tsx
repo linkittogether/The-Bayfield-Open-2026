@@ -6,22 +6,26 @@ import { cn } from "@/lib/utils";
 import { listPlayers } from "@/lib/server/players";
 import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
 import { getDay3Matches } from "@/lib/server/day3";
-import { getTournamentState } from "@/lib/server/tournament";
+import { getSeasonState } from "@/lib/server/tournament";
+import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 
 export default async function HomePage() {
+  const { viewed: season, readOnly } = await getSeasonView();
   const [user, state, playerList, day1Lb, picks, matches] = await Promise.all([
     getCurrentUser(),
-    getTournamentState(),
+    getSeasonState(season.id),
     listPlayers(),
-    getDay1Leaderboard(),
-    getDay1PicksOverview(),
-    getDay3Matches(),
+    getDay1Leaderboard(season.id),
+    getDay1PicksOverview(season.id),
+    getDay3Matches(season.id),
   ]);
 
   const isAdmin = user?.kind === "admin";
   const userId = user?.kind === "player" ? user.player.id : null;
-  const nextStep = computeNextStep({ state, userId, isAdmin, day1Lb, picks, matches });
+  const nextStep = readOnly
+    ? null
+    : computeNextStep({ state, userId, isAdmin, day1Lb, picks, matches });
 
   return (
     <AppShell>
@@ -37,7 +41,7 @@ export default async function HomePage() {
             priority
           />
           <p className="text-green-200 text-xs font-medium mb-1 uppercase tracking-widest">
-            2026 Tournament
+            {season.year} Tournament
           </p>
           <h2 className="text-3xl font-bold mb-1 font-heading">The Bayfield Open</h2>
           <p className="text-green-100 text-sm">
@@ -183,7 +187,7 @@ type NextStep = {
 };
 
 function computeNextStep(args: {
-  state: Awaited<ReturnType<typeof getTournamentState>>;
+  state: Awaited<ReturnType<typeof getSeasonState>>;
   userId: number | null;
   isAdmin: boolean;
   day1Lb: Awaited<ReturnType<typeof getDay1Leaderboard>>;

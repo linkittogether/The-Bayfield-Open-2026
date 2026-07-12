@@ -3,17 +3,23 @@ import { AppShell } from "@/components/app-shell";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { ordinal } from "@/lib/format";
 import { getDay1PicksOverview } from "@/lib/server/day1";
+import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { PickButton } from "./pick-button";
 
 export const metadata = { title: "Partner Selection" };
 
 export default async function Day1PicksPage() {
-  const [user, data] = await Promise.all([getCurrentUser(), getDay1PicksOverview()]);
+  const { viewed: season, readOnly } = await getSeasonView();
+  const [user, data] = await Promise.all([
+    getCurrentUser(),
+    getDay1PicksOverview(season.id),
+  ]);
 
   const userId = user?.kind === "player" ? user.player.id : null;
   const isAdmin = user?.kind === "admin";
-  const canPickNow = !!data.nextPicker && (isAdmin || userId === data.nextPicker.id);
+  const canPickNow =
+    !readOnly && !!data.nextPicker && (isAdmin || userId === data.nextPicker.id);
 
   if (data.pickingComplete) {
     return (

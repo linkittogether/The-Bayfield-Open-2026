@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { AlertTriangle, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { resetTournament } from "@/lib/server/tournament";
+import { resetSeason } from "@/lib/server/tournament";
 
-export function ResetButton() {
+export function ResetButton({ seasonId }: { seasonId: number }) {
   const router = useRouter();
   const [confirm, setConfirm] = useState(false);
   const [done, setDone] = useState(false);
@@ -17,7 +17,7 @@ export function ResetButton() {
     setError(null);
     startTransition(async () => {
       try {
-        await resetTournament();
+        await resetSeason(seasonId);
         setDone(true);
         setConfirm(false);
         router.refresh();

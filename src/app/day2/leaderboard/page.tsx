@@ -6,7 +6,8 @@ import { PlayerAvatar } from "@/components/player-avatar";
 import { cn } from "@/lib/utils";
 import { ordinal } from "@/lib/format";
 import { getDay2Leaderboard } from "@/lib/server/day2";
-import { getTournamentState } from "@/lib/server/tournament";
+import { getSeasonState } from "@/lib/server/tournament";
+import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 
 export const metadata = { title: "Day 2 Leaderboard" };
@@ -14,10 +15,11 @@ export const metadata = { title: "Day 2 Leaderboard" };
 const medals = ["🥇", "🥈", "🥉"];
 
 export default async function Day2LeaderboardPage() {
+  const { viewed: season, readOnly } = await getSeasonView();
   const [user, lb, state] = await Promise.all([
     getCurrentUser(),
-    getDay2Leaderboard(),
-    getTournamentState(),
+    getDay2Leaderboard(season.id),
+    getSeasonState(season.id),
   ]);
 
   const userId = user?.kind === "player" ? user.player.id : null;
@@ -25,13 +27,15 @@ export default async function Day2LeaderboardPage() {
 
   return (
     <AppShell title="Day 2 Leaderboard">
-      <div className="mb-5">
-        <Button asChild className="w-full h-11">
-          <Link href="/day2/scores">
-            <ClipboardList size={16} /> Enter Score
-          </Link>
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="mb-5">
+          <Button asChild className="w-full h-11">
+            <Link href="/day2/scores">
+              <ClipboardList size={16} /> Enter Score
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {lb.length === 0 ? (
         <div className="bg-muted rounded-2xl p-8 text-center">
@@ -129,7 +133,7 @@ export default async function Day2LeaderboardPage() {
           <p className="text-green-200 text-sm mt-1">
             {lb[0].player1Name} & {lb[0].player2Name} with {lb[0].totalNetScore} net
           </p>
-          {!state?.day2DraftComplete && (
+          {!readOnly && !state?.day2DraftComplete && (
             <Button
               asChild
               className="mt-4 bg-white text-primary hover:bg-white/90 w-full"

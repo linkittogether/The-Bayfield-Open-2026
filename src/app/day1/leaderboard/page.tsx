@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 import { ordinal } from "@/lib/format";
 import { getDay1Leaderboard } from "@/lib/server/day1";
 import { listPlayers } from "@/lib/server/players";
-import { getTournamentState } from "@/lib/server/tournament";
+import { getSeasonState } from "@/lib/server/tournament";
+import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 
 export const metadata = { title: "Day 1 Leaderboard" };
@@ -15,11 +16,12 @@ export const metadata = { title: "Day 1 Leaderboard" };
 const medals = ["🥇", "🥈", "🥉"];
 
 export default async function Day1LeaderboardPage() {
+  const { viewed: season, readOnly } = await getSeasonView();
   const [user, lb, players, state] = await Promise.all([
     getCurrentUser(),
-    getDay1Leaderboard(),
+    getDay1Leaderboard(season.id),
     listPlayers(),
-    getTournamentState(),
+    getSeasonState(season.id),
   ]);
 
   const userId = user?.kind === "player" ? user.player.id : null;
@@ -28,13 +30,15 @@ export default async function Day1LeaderboardPage() {
 
   return (
     <AppShell title="Day 1 Leaderboard">
-      <div className="mb-5">
-        <Button asChild className="w-full h-11">
-          <Link href="/day1/scores">
-            <ClipboardList size={16} /> Enter Score
-          </Link>
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="mb-5">
+          <Button asChild className="w-full h-11">
+            <Link href="/day1/scores">
+              <ClipboardList size={16} /> Enter Score
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {lb.length === 0 ? (
         <div className="bg-muted rounded-2xl p-8 text-center">
@@ -107,7 +111,7 @@ export default async function Day1LeaderboardPage() {
         </div>
       )}
 
-      {lb.length >= 20 && !state?.day1PickingComplete && (
+      {!readOnly && lb.length >= 20 && !state?.day1PickingComplete && (
         <div className="mt-5 bg-accent rounded-2xl p-4 border border-secondary/30">
           <p className="font-semibold text-sm mb-1">Ready to pick partners!</p>
           <p className="text-xs text-muted-foreground mb-3">

@@ -2,8 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, LogIn } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
+import { getCurrentSeason, getViewedSeason, listSeasons } from "@/lib/server/seasons";
 import { AuthButton } from "./auth-button";
 import { BottomNav } from "./bottom-nav";
+import { SeasonSelector } from "./season-selector";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -18,7 +20,12 @@ export async function AppShell({
   showBack,
   backTo,
 }: AppShellProps) {
-  const user = await getCurrentUser();
+  const [user, seasonList, currentSeason, viewedSeason] = await Promise.all([
+    getCurrentUser(),
+    listSeasons(),
+    getCurrentSeason(),
+    getViewedSeason(),
+  ]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -53,6 +60,14 @@ export async function AppShell({
               </h1>
             )}
           </div>
+
+          {seasonList.length > 0 && (
+            <SeasonSelector
+              years={seasonList.map((s) => s.year)}
+              viewedYear={viewedSeason.year}
+              currentYear={currentSeason.year}
+            />
+          )}
 
           {user ? (
             <AuthButton kind={user.kind} name={user.kind === "admin" ? user.admin.username : user.player.name} />

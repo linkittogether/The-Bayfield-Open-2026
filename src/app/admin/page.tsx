@@ -4,7 +4,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { listAdmins } from "@/lib/server/admins";
 import { listPlayers } from "@/lib/server/players";
-import { getTournamentState } from "@/lib/server/tournament";
+import { getCurrentSeason } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { AdminManager } from "./admin-manager";
 import { PlayerEditor } from "./player-editor";
@@ -47,8 +47,8 @@ export default async function AdminPage() {
     );
   }
 
-  const [state, players, admins] = await Promise.all([
-    getTournamentState(),
+  const [season, players, admins] = await Promise.all([
+    getCurrentSeason(),
     listPlayers(),
     listAdmins(),
   ]);
@@ -70,16 +70,16 @@ export default async function AdminPage() {
         </Button>
 
         <div className="bg-white border border-border rounded-xl p-4">
-          <h3 className="font-semibold mb-3">Tournament Status</h3>
+          <h3 className="font-semibold mb-3">Tournament Status · {season.year}</h3>
           <StatusRows
             rows={[
               ["Players registered", players.length],
-              ["Current day", state?.currentDay ?? 1],
-              ["Day 1 complete", state?.day1Complete ? "Yes" : "No"],
-              ["Partners picked", state?.day1PickingComplete ? "Yes" : "No"],
-              ["Day 2 complete", state?.day2Complete ? "Yes" : "No"],
-              ["Day 3 draft complete", state?.day2DraftComplete ? "Yes" : "No"],
-              ["Day 3 complete", state?.day3Complete ? "Yes" : "No"],
+              ["Current day", season.currentDay],
+              ["Day 1 complete", season.day1Complete ? "Yes" : "No"],
+              ["Partners picked", season.day1PickingComplete ? "Yes" : "No"],
+              ["Day 2 complete", season.day2Complete ? "Yes" : "No"],
+              ["Day 3 draft complete", season.day2DraftComplete ? "Yes" : "No"],
+              ["Day 3 complete", season.day3Complete ? "Yes" : "No"],
             ]}
           />
         </div>
@@ -96,7 +96,7 @@ export default async function AdminPage() {
 
         <AdminManager admins={admins.map((a) => ({ id: a.id, username: a.username }))} />
 
-        <ResetButton />
+        <ResetButton seasonId={season.id} />
       </div>
     </AppShell>
   );

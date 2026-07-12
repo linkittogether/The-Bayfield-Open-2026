@@ -5,11 +5,13 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { getDay3Teams } from "@/lib/server/day3";
+import { getSeasonView } from "@/lib/server/seasons";
 
 export const metadata = { title: "Day 3 Teams" };
 
 export default async function Day2DraftPage() {
-  const teams = await getDay3Teams();
+  const { viewed: season, readOnly } = await getSeasonView();
+  const teams = await getDay3Teams(season.id);
 
   return (
     <AppShell title="Day 3 Teams" showBack backTo="/day2/leaderboard">
@@ -46,11 +48,13 @@ export default async function Day2DraftPage() {
           players={teams.myceliumSyndicate}
         />
 
-        <Button asChild className="w-full h-12 text-base">
-          <Link href="/day3/setup">
-            <Flag size={18} /> Set Up Day 3 Matchups
-          </Link>
-        </Button>
+        {!readOnly && (
+          <Button asChild className="w-full h-12 text-base">
+            <Link href="/day3/setup">
+              <Flag size={18} /> Set Up Day 3 Matchups
+            </Link>
+          </Button>
+        )}
       </div>
     </AppShell>
   );

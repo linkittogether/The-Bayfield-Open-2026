@@ -88,8 +88,52 @@ export const seasonRosters = pgTable(
       .references(() => teams.id, { onDelete: "restrict" }),
     absent: boolean().notNull().default(false),
     isCaptain: boolean().notNull().default(false),
+    // The player's handicap index FOR THIS SEASON (indices change year to year).
+    // players.handicap stays as the current/Grint convenience value.
+    handicapIndex: numeric({ precision: 3, scale: 1, mode: "number" }),
   },
   (t) => [unique().on(t.seasonId, t.playerId)],
+);
+
+// A golf course (reusable across seasons).
+export const courses = pgTable("courses", {
+  id: serial().primaryKey(),
+  name: text().notNull().unique(),
+  grintCourseId: integer(),
+});
+
+// A scored segment of a season's stroke-play rounds — normally a nine, but can be
+// an 18 (rating/slope/par are the WHS inputs for those holes). Net is COMPUTED from
+// these + the player's season index; it is never stored. rating/slope/par are
+// nullable until sourced (Grint or manual/back-solved).
+export const segments = pgTable("segments", {
+  id: serial().primaryKey(),
+  seasonId: integer()
+    .notNull()
+    .references(() => seasons.id, { onDelete: "cascade" }),
+  courseId: integer().references(() => courses.id, { onDelete: "set null" }),
+  day: integer().notNull(), // 1 = Friday, 2 = Saturday (stroke-play days)
+  sortOrder: integer().notNull(),
+  label: text().notNull(), // e.g. "Bluewater", "Sunset back 9"
+  holes: integer().notNull().default(9),
+  rating: numeric({ precision: 4, scale: 1, mode: "number" }),
+  slope: integer(),
+  par: integer(),
+});
+
+export const segmentScores = pgTable(
+  "segment_scores",
+  {
+    id: serial().primaryKey(),
+    segmentId: integer()
+      .notNull()
+      .references(() => segments.id, { onDelete: "cascade" }),
+    playerId: integer()
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    gross: integer().notNull(),
+  },
+  (t) => [unique().on(t.segmentId, t.playerId)],
 );
 
 export const admins = pgTable("admins", {

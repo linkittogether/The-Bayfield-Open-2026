@@ -12,7 +12,9 @@ A 3-day weekend, ~20 players. **Friday and Saturday are individual stroke play**
 
 1. **Individual** — lowest cumulative net.
 2. **Pairs** — the Saturday partner competition (trophy + jackets).
-3. **Huron Cup** — the two-team competition decided Sunday.
+3. **Huron Cup** — the two-team competition, decided by **Sunday match play** (most
+   matches won). A summed team net is computed as an informational secondary standing
+   but does **not** decide the cup.
 
 ## Players & teams
 
@@ -103,16 +105,18 @@ players' handicaps), a separate allowance from the stroke-play course handicap.
   matches.
 - **Day 1 draft** (rank 10 → 1 picks from the bottom 10) is essentially correct.
 
-## Open questions
+## Resolved decisions
 
-- **How is the Huron Cup actually decided — Sunday match play, or summed team net?** The
-  2025 sheet decided the team competition by **summed net** (Mycelium ~1491 vs ~1517) and
-  contains **no** hole-by-hole match data. So either 2025's team result *was* the net-sum,
-  or Sunday match play happened but was recorded elsewhere. This blocks finalizing the
-  team-competition model and importing 2025's Day 3. _(Owner to confirm.)_
+- **Huron Cup is decided by Sunday match play** (most matches won) — resolved 2026-07-12.
+  The summed team net (the 2025 sheet's ~1491 vs ~1517) is a **nice-to-have** we still
+  compute and display, but it does **not** decide the cup. 2025's actual Sunday match
+  results aren't in the sheet, so 2025's Huron Cup result stays unrecorded (only its team
+  net-sum is reconstructable).
 
 ## 2025 import status
 
-- Imported: 2025 season, team rosters (10v10), and Day-1 (Bluewater 9) individual scores.
-- Not imported: Saturday's 27-hole detail, the Pairs standings, and Sunday's team result
-  (pending the open question and a scoring re-model that can hold per-9 fractional nets).
+- Imported: 2025 season, team rosters (10v10), **all stroke-play segment scores**
+  (Bluewater 9 + Sunset back 9 + Sunset 18) and per-season handicap indices → the
+  Individual and Pairs standings compute correctly (verified against the sheet).
+- Not imported: **Sunday match-play results** (no hole-by-hole data exists in the sheet).
+  The 2025 team net-sum is computable as the informational secondary standing.

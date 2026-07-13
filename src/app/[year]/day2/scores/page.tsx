@@ -7,12 +7,18 @@ import { Day2ScoresForm } from "./scores-form";
 
 export const metadata = { title: "Day 2 — Enter Score" };
 
-export default async function Day2ScoresPage() {
-  const { viewed: season, readOnly } = await getSeasonView();
+export default async function Day2ScoresPage({
+  params,
+}: {
+  params: Promise<{ year: string }>;
+}) {
+  const { year } = await params;
+  const yr = Number(year);
+  const { viewed: season, readOnly } = await getSeasonView(yr);
 
   if (readOnly) {
     return (
-      <AppShell title="Day 2 — Enter Score" showBack backTo="/day2/leaderboard">
+      <AppShell title="Day 2 — Enter Score" showBack backTo={`/${yr}/day2/leaderboard`} year={yr}>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
           You&apos;re viewing the {season.year} season, which is read-only.
           Switch to the current season to enter scores.
@@ -28,7 +34,7 @@ export default async function Day2ScoresPage() {
 
   if (!user) {
     return (
-      <AppShell title="Day 2 — Enter Score" showBack backTo="/day2/leaderboard">
+      <AppShell title="Day 2 — Enter Score" showBack backTo={`/${yr}/day2/leaderboard`} year={yr}>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-2">
           <Lock size={16} className="text-amber-700 mt-0.5 flex-shrink-0" />
           <p className="text-sm text-amber-800">Please log in to enter your Day 2 score.</p>
@@ -41,7 +47,7 @@ export default async function Day2ScoresPage() {
   const userId = user.kind === "player" ? user.player.id : null;
 
   return (
-    <AppShell title="Day 2 — Enter Score" showBack backTo="/day2/leaderboard">
+    <AppShell title="Day 2 — Enter Score" showBack backTo={`/${yr}/day2/leaderboard`} year={yr}>
       <p className="text-xs text-muted-foreground mb-4">
         Saturday is individual stroke play — enter your own gross for each round.
       </p>

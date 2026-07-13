@@ -1,14 +1,12 @@
 "use server";
 
 import { desc, eq } from "drizzle-orm";
-import { cookies } from "next/headers";
+import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
 import { requireAdmin } from "./auth-guards";
 
 export type Season = typeof seasons.$inferSelect;
-
-const VIEWED_SEASON_COOKIE = "bayfield_viewed_season";
 
 export async function getCurrentSeason(): Promise<Season> {
   const [row] = await db
@@ -47,32 +45,16 @@ export async function getSeasonById(id: number): Promise<Season | null> {
 }
 
 /**
- * The season the viewer is currently browsing (from the bayfield_viewed_season
- * cookie), defaulting to the current season when the cookie is missing/invalid.
- * Reads never mutate; the season selector sets the cookie via selectSeason().
+ * Convenience for pages: the viewed season (from the /[year] path segment), the
+ * current season, and whether the view is read-only (a past season). Writes are
+ * still enforced server-side. 404s if the year isn't a real season.
  */
-export async function getViewedSeason(): Promise<Season> {
-  const store = await cookies();
-  const raw = store.get(VIEWED_SEASON_COOKIE)?.value;
-  if (raw) {
-    const year = Number(raw);
-    if (Number.isFinite(year)) {
-      const s = await getSeasonByYear(year);
-      if (s) return s;
-    }
-  }
-  return getCurrentSeason();
-}
-
-/**
- * Convenience for pages: the viewed season, the current season, and whether the
- * view is read-only (i.e. a past season). Writes are still enforced server-side.
- */
-export async function getSeasonView() {
+export async function getSeasonView(year: number) {
   const [viewed, current] = await Promise.all([
-    getViewedSeason(),
+    getSeasonByYear(year),
     getCurrentSeason(),
   ]);
+  if (!viewed) notFound();
   return { viewed, current, readOnly: viewed.id !== current.id };
 }
 
@@ -96,18 +78,6 @@ export async function setCurrentSeason(seasonId: number) {
       .update(seasons)
       .set({ isCurrent: true })
       .where(eq(seasons.id, seasonId));
-  });
-  return { ok: true };
-}
-
-/** Sets which season the viewer is browsing (public — view only). */
-export async function selectSeason(year: number) {
-  const season = await getSeasonByYear(year);
-  if (!season) throw new Error("Unknown season");
-  const store = await cookies();
-  store.set(VIEWED_SEASON_COOKIE, String(year), {
-    path: "/",
-    sameSite: "lax",
   });
   return { ok: true };
 }

@@ -9,8 +9,14 @@ import { PickButton } from "./pick-button";
 
 export const metadata = { title: "Partner Selection" };
 
-export default async function Day1PicksPage() {
-  const { viewed: season, readOnly } = await getSeasonView();
+export default async function Day1PicksPage({
+  params,
+}: {
+  params: Promise<{ year: string }>;
+}) {
+  const { year } = await params;
+  const yr = Number(year);
+  const { viewed: season, readOnly } = await getSeasonView(yr);
   const [user, data] = await Promise.all([
     getCurrentUser(),
     getDay1PicksOverview(season.id),
@@ -23,7 +29,7 @@ export default async function Day1PicksPage() {
 
   if (data.pickingComplete) {
     return (
-      <AppShell title="Partner Selection" showBack backTo="/day1/leaderboard">
+      <AppShell title="Partner Selection" showBack backTo={`/${yr}/day1/leaderboard`} year={yr}>
         <div className="bg-green-50 border border-green-200 rounded-2xl p-5 mb-5 text-center">
           <Trophy size={36} className="mx-auto mb-2 text-gold" />
           <p className="font-bold text-green-800 text-lg font-heading">Teams are set!</p>
@@ -60,7 +66,7 @@ export default async function Day1PicksPage() {
   }
 
   return (
-    <AppShell title="Partner Selection" showBack backTo="/day1/leaderboard">
+    <AppShell title="Partner Selection" showBack backTo={`/${yr}/day1/leaderboard`} year={yr}>
       <div className="bg-accent border border-secondary/30 rounded-2xl p-4 mb-5">
         <p className="text-sm font-semibold mb-1">How it works</p>
         <p className="text-xs text-muted-foreground">

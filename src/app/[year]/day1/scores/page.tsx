@@ -9,13 +9,19 @@ import { ScoresForm } from "./scores-form";
 
 export const metadata = { title: "Day 1 — Enter Score" };
 
-export default async function Day1ScoresPage() {
-  const { viewed: season, readOnly } = await getSeasonView();
+export default async function Day1ScoresPage({
+  params,
+}: {
+  params: Promise<{ year: string }>;
+}) {
+  const { year } = await params;
+  const yr = Number(year);
+  const { viewed: season, readOnly } = await getSeasonView(yr);
   const user = await getCurrentUser();
 
   if (readOnly) {
     return (
-      <AppShell title="Day 1 — Enter Score" showBack backTo="/day1/leaderboard">
+      <AppShell title="Day 1 — Enter Score" showBack backTo={`/${yr}/day1/leaderboard`} year={yr}>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
           You&apos;re viewing the {season.year} season, which is read-only.
           Switch to the current season to enter scores.
@@ -26,7 +32,7 @@ export default async function Day1ScoresPage() {
 
   if (!user) {
     return (
-      <AppShell title="Day 1 — Enter Score" showBack backTo="/day1/leaderboard">
+      <AppShell title="Day 1 — Enter Score" showBack backTo={`/${yr}/day1/leaderboard`} year={yr}>
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
           <p className="font-semibold text-lg">Login Required</p>
           <p className="text-sm text-muted-foreground">
@@ -51,7 +57,7 @@ export default async function Day1ScoresPage() {
   const isAdmin = user.kind === "admin";
 
   return (
-    <AppShell title="Day 1 — Enter Score" showBack backTo="/day1/leaderboard">
+    <AppShell title="Day 1 — Enter Score" showBack backTo={`/${yr}/day1/leaderboard`} year={yr}>
       <ScoresForm
         players={entry.players}
         segment={entry.segment}

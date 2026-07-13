@@ -5,22 +5,36 @@ import { usePathname } from "next/navigation";
 import { Flag, Sailboat, Trophy, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const items = [
-  { href: "/", label: "Home", icon: Sailboat, prefix: "/" },
-  { href: "/day1/leaderboard", label: "Day 1", icon: Flag, prefix: "/day1" },
-  { href: "/day2/leaderboard", label: "Day 2", icon: Users, prefix: "/day2" },
-  { href: "/day3/leaderboard", label: "Day 3", icon: Trophy, prefix: "/day3" },
-];
-
-export function BottomNav() {
+export function BottomNav({ year }: { year: number }) {
   const pathname = usePathname();
+  const base = `/${year}`;
+  const items = [
+    { href: base, label: "Home", icon: Sailboat, match: (p: string) => p === base },
+    {
+      href: `${base}/day1/leaderboard`,
+      label: "Day 1",
+      icon: Flag,
+      match: (p: string) => p.startsWith(`${base}/day1`),
+    },
+    {
+      href: `${base}/day2/leaderboard`,
+      label: "Day 2",
+      icon: Users,
+      match: (p: string) => p.startsWith(`${base}/day2`),
+    },
+    {
+      href: `${base}/day3/leaderboard`,
+      label: "Day 3",
+      icon: Trophy,
+      match: (p: string) => p.startsWith(`${base}/day3`),
+    },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-border z-50">
       <div className="max-w-lg mx-auto flex">
         {items.map((it) => {
-          const active =
-            it.prefix === "/" ? pathname === "/" : pathname.startsWith(it.prefix);
+          const active = it.match(pathname);
           const Icon = it.icon;
           return (
             <Link key={it.href} href={it.href} className="flex-1">

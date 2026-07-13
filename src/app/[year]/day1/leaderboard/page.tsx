@@ -15,8 +15,14 @@ export const metadata = { title: "Day 1 Leaderboard" };
 
 const medals = ["🥇", "🥈", "🥉"];
 
-export default async function Day1LeaderboardPage() {
-  const { viewed: season, readOnly } = await getSeasonView();
+export default async function Day1LeaderboardPage({
+  params,
+}: {
+  params: Promise<{ year: string }>;
+}) {
+  const { year } = await params;
+  const yr = Number(year);
+  const { viewed: season, readOnly } = await getSeasonView(yr);
   const [user, lb, players, state] = await Promise.all([
     getCurrentUser(),
     getDay1Leaderboard(season.id),
@@ -29,11 +35,11 @@ export default async function Day1LeaderboardPage() {
   const notScored = players.filter((p) => !scoredIds.has(p.id));
 
   return (
-    <AppShell title="Day 1 Leaderboard">
+    <AppShell title="Day 1 Leaderboard" year={yr}>
       {!readOnly && (
         <div className="mb-5">
           <Button asChild className="w-full h-11">
-            <Link href="/day1/scores">
+            <Link href={`/${yr}/day1/scores`}>
               <ClipboardList size={16} /> Enter Score
             </Link>
           </Button>
@@ -118,7 +124,7 @@ export default async function Day1LeaderboardPage() {
             All 20 players have scores. Start the Day 2 partner selection.
           </p>
           <Button asChild className="w-full bg-secondary text-white hover:bg-secondary/90">
-            <Link href="/day1/picks">
+            <Link href={`/${yr}/day1/picks`}>
               <Users size={16} /> Start Partner Pick
             </Link>
           </Button>
@@ -128,7 +134,7 @@ export default async function Day1LeaderboardPage() {
       {state?.day1PickingComplete && (
         <div className="mt-5 bg-green-50 rounded-2xl p-4 border border-green-200">
           <p className="font-semibold text-sm text-green-800 mb-1">Partners selected ✓</p>
-          <Link href="/day1/picks" className="text-sm text-green-700 underline">
+          <Link href={`/${yr}/day1/picks`} className="text-sm text-green-700 underline">
             View pairings →
           </Link>
         </div>

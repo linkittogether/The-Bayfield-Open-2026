@@ -26,11 +26,13 @@ const CAPTAIN_FALLBACK: Record<Side, string> = {
 };
 
 export function SetupBuilder({
+  year,
   truffle,
   syndicate,
   truffleCaptain,
   syndicateCaptain,
 }: {
+  year: number;
   truffle: RosterPlayer[];
   syndicate: RosterPlayer[];
   truffleCaptain?: string;
@@ -115,7 +117,7 @@ export function SetupBuilder({
           })),
         });
         setSaved(true);
-        setTimeout(() => router.push("/day3/leaderboard"), 900);
+        setTimeout(() => router.push(`/${year}/day3/leaderboard`), 900);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to save matches");
       }

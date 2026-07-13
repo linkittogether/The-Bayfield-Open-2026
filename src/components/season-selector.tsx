@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTransition } from "react";
 import {
   Select,
@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { selectSeason } from "@/lib/server/seasons";
 
 export function SeasonSelector({
   years,
@@ -21,16 +20,18 @@ export function SeasonSelector({
   currentYear: number;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [pending, startTransition] = useTransition();
 
   return (
     <Select
       value={String(viewedYear)}
       onValueChange={(v) => {
-        startTransition(async () => {
-          await selectSeason(Number(v));
-          router.refresh();
-        });
+        // Swap the leading /[year] segment for the chosen year, keep the rest.
+        const segments = pathname.split("/"); // e.g. ["", "2026", "day3", ...]
+        segments[1] = v;
+        const next = segments.join("/") || `/${v}`;
+        startTransition(() => router.push(next));
       }}
     >
       <SelectTrigger

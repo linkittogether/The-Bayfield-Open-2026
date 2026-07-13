@@ -14,8 +14,14 @@ export const metadata = { title: "Day 2 Leaderboard" };
 
 const medals = ["🥇", "🥈", "🥉"];
 
-export default async function Day2LeaderboardPage() {
-  const { viewed: season, readOnly } = await getSeasonView();
+export default async function Day2LeaderboardPage({
+  params,
+}: {
+  params: Promise<{ year: string }>;
+}) {
+  const { year } = await params;
+  const yr = Number(year);
+  const { viewed: season, readOnly } = await getSeasonView(yr);
   const [user, lb, state] = await Promise.all([
     getCurrentUser(),
     getDay2Leaderboard(season.id),
@@ -26,11 +32,11 @@ export default async function Day2LeaderboardPage() {
   const allDone = lb.length > 0 && lb.every((e) => e.combinedNet != null);
 
   return (
-    <AppShell title="Day 2 Leaderboard">
+    <AppShell title="Day 2 Leaderboard" year={yr}>
       {!readOnly && (
         <div className="mb-5">
           <Button asChild className="w-full h-11">
-            <Link href="/day2/scores">
+            <Link href={`/${yr}/day2/scores`}>
               <ClipboardList size={16} /> Enter Score
             </Link>
           </Button>
@@ -48,7 +54,7 @@ export default async function Day2LeaderboardPage() {
           <p className="text-sm text-muted-foreground mt-1">
             Complete Day 1 partner selection first
           </p>
-          <Link href="/day1/picks" className="mt-3 inline-block text-sm text-primary underline">
+          <Link href={`/${yr}/day1/picks`} className="mt-3 inline-block text-sm text-primary underline">
             Go to partner selection →
           </Link>
         </div>
@@ -129,7 +135,7 @@ export default async function Day2LeaderboardPage() {
               asChild
               className="mt-4 bg-white text-primary hover:bg-white/90 w-full"
             >
-              <Link href="/day2/draft">Proceed to Day 3 Draft</Link>
+              <Link href={`/${yr}/day2/draft`}>Proceed to Day 3 Draft</Link>
             </Button>
           )}
         </div>

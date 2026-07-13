@@ -9,12 +9,18 @@ import { getSeasonView } from "@/lib/server/seasons";
 
 export const metadata = { title: "Day 3 Teams" };
 
-export default async function Day2DraftPage() {
-  const { viewed: season, readOnly } = await getSeasonView();
+export default async function Day2DraftPage({
+  params,
+}: {
+  params: Promise<{ year: string }>;
+}) {
+  const { year } = await params;
+  const yr = Number(year);
+  const { viewed: season, readOnly } = await getSeasonView(yr);
   const teams = await getDay3Teams(season.id);
 
   return (
-    <AppShell title="Day 3 Teams" showBack backTo="/day2/leaderboard">
+    <AppShell title="Day 3 Teams" showBack backTo={`/${yr}/day2/leaderboard`} year={yr}>
       <div className="space-y-5">
         <div className="bg-primary/5 rounded-xl p-4 text-center">
           <Image
@@ -50,7 +56,7 @@ export default async function Day2DraftPage() {
 
         {!readOnly && (
           <Button asChild className="w-full h-12 text-base">
-            <Link href="/day3/setup">
+            <Link href={`/${yr}/day3/setup`}>
               <Flag size={18} /> Set Up Day 3 Matchups
             </Link>
           </Button>

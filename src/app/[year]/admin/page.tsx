@@ -13,12 +13,18 @@ import { StatusRows } from "./status-rows";
 
 export const metadata = { title: "Admin Panel" };
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  params,
+}: {
+  params: Promise<{ year: string }>;
+}) {
+  const { year } = await params;
+  const yr = Number(year);
   const user = await getCurrentUser();
 
   if (!user) {
     return (
-      <AppShell title="Admin" showBack backTo="/">
+      <AppShell title="Admin" showBack backTo={`/${yr}`} year={yr}>
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
           <Lock size={40} className="text-muted-foreground" />
           <p className="font-semibold text-lg">Admin Login Required</p>
@@ -35,7 +41,7 @@ export default async function AdminPage() {
 
   if (user.kind !== "admin") {
     return (
-      <AppShell title="Admin" showBack backTo="/">
+      <AppShell title="Admin" showBack backTo={`/${yr}`} year={yr}>
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
           <Shield size={40} className="text-muted-foreground" />
           <p className="font-semibold text-lg">Admin Access Only</p>
@@ -54,7 +60,7 @@ export default async function AdminPage() {
   ]);
 
   return (
-    <AppShell title="Admin Panel" showBack backTo="/">
+    <AppShell title="Admin Panel" showBack backTo={`/${yr}`} year={yr}>
       <div className="space-y-5">
         <div className="flex items-center gap-2 bg-primary/10 rounded-xl px-4 py-3">
           <Shield size={18} className="text-primary" />
@@ -64,7 +70,7 @@ export default async function AdminPage() {
         </div>
 
         <Button asChild className="w-full h-11">
-          <Link href="/day1/register">
+          <Link href={`/${yr}/day1/register`}>
             <Plus size={16} /> Register New Player
           </Link>
         </Button>

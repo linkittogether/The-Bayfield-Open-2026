@@ -11,8 +11,14 @@ import { formatNet } from "@/lib/format";
 
 export const metadata = { title: "Day 3 — Huron Cup" };
 
-export default async function Day3LeaderboardPage() {
-  const { viewed: season, readOnly } = await getSeasonView();
+export default async function Day3LeaderboardPage({
+  params,
+}: {
+  params: Promise<{ year: string }>;
+}) {
+  const { year } = await params;
+  const yr = Number(year);
+  const { viewed: season, readOnly } = await getSeasonView(yr);
   const [user, lb, matches, teams, teamNet] = await Promise.all([
     getCurrentUser(),
     getDay3Leaderboard(season.id),
@@ -37,11 +43,11 @@ export default async function Day3LeaderboardPage() {
   const allMatchesDone = matches.length > 0 && matches.every((m) => m.holesPlayed === 18);
 
   return (
-    <AppShell title="Day 3 — Huron Cup">
+    <AppShell title="Day 3 — Huron Cup" year={yr}>
       {canSetupMatches && (
         <div className="mb-5">
           <Button asChild className="w-full h-11">
-            <Link href="/day3/setup">
+            <Link href={`/${yr}/day3/setup`}>
               <Settings size={16} /> Setup Matches
             </Link>
           </Button>
@@ -141,7 +147,7 @@ export default async function Day3LeaderboardPage() {
           <Flag size={40} className="mx-auto mb-3 text-muted-foreground" />
           <p className="font-semibold text-muted-foreground">No matches set up yet</p>
           {canSetupMatches && (
-            <Link href="/day3/setup" className="mt-3 inline-block text-sm text-primary underline">
+            <Link href={`/${yr}/day3/setup`} className="mt-3 inline-block text-sm text-primary underline">
               Set up matches →
             </Link>
           )}
@@ -161,7 +167,7 @@ export default async function Day3LeaderboardPage() {
               const isMyMatch =
                 userId !== null && (m.trufflePlayerId === userId || m.syndicatePlayerId === userId);
               return (
-                <Link key={m.id} href={`/day3/match/${m.id}`}>
+                <Link key={m.id} href={`/${yr}/day3/match/${m.id}`}>
                   <div
                     className={cn(
                       "border rounded-xl p-3 flex items-center gap-3 active:scale-[0.98] transition-transform",

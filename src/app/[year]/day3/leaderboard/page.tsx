@@ -159,7 +159,7 @@ export default async function Day3LeaderboardPage({
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Matches
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {matches.map((m) => {
               const th = m.truffleHolesWon;
               const sh = m.syndicateHolesWon;
@@ -178,6 +178,13 @@ export default async function Day3LeaderboardPage({
                   : margin === 0
                     ? `AS · thru ${hp}`
                     : `${margin} up · thru ${hp}`;
+              const winnerEmoji = halved
+                ? "🤝"
+                : th > sh
+                  ? "🐗"
+                  : sh > th
+                    ? "🍄"
+                    : "⛳";
               const isMyMatch =
                 userId !== null && (m.trufflePlayerId === userId || m.syndicatePlayerId === userId);
               return (
@@ -191,7 +198,10 @@ export default async function Day3LeaderboardPage({
                     )}
                   >
                     <div className="text-center w-7 flex-shrink-0">
-                      <p className="text-xs text-muted-foreground">M{m.matchNumber}</p>
+                      <p className="text-lg leading-none">{winnerEmoji}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        M{m.matchNumber}
+                      </p>
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">

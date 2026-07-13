@@ -36,10 +36,10 @@ export default async function Day3LeaderboardPage({
   const canSetupMatches = !readOnly && (isAdmin || isCaptain);
 
   const s = lb.summary;
-  const truffleWins = s.truffleMatchWins;
-  const syndicateWins = s.syndicateMatchWins;
-  const truffleLeading = truffleWins > syndicateWins;
-  const tie = truffleWins === syndicateWins;
+  const trufflePts = s.trufflePoints;
+  const syndicatePts = s.syndicatePoints;
+  const truffleLeading = trufflePts > syndicatePts;
+  const tie = trufflePts === syndicatePts;
   // Match-play matches close out early (before 18), so a completed Day 3 is the
   // season's day3Complete flag — not "every match reached 18 holes."
   const day3Done = matches.length > 0 && season.day3Complete;
@@ -64,27 +64,27 @@ export default async function Day3LeaderboardPage({
           <div className={cn(truffleLeading && "scale-110 transition-transform")}>
             <p className="text-2xl mb-1">🐗</p>
             <p className="text-xs text-green-200">Truffle Hogs</p>
-            <p className="text-4xl font-bold">{truffleWins}</p>
-            <p className="text-xs text-green-200">match wins</p>
+            <p className="text-4xl font-bold">{trufflePts}</p>
+            <p className="text-xs text-green-200">points</p>
           </div>
           <div>
             <p className="text-green-200 text-sm font-medium">vs</p>
-            {tie && (truffleWins > 0 || syndicateWins > 0) && (
+            {tie && (trufflePts > 0 || syndicatePts > 0) && (
               <p className="text-xs text-green-300 mt-1">Tied!</p>
             )}
           </div>
           <div className={cn(!truffleLeading && !tie && "scale-110 transition-transform")}>
             <p className="text-2xl mb-1">🍄</p>
             <p className="text-xs text-green-200">Mycelium Syndicate</p>
-            <p className="text-4xl font-bold">{syndicateWins}</p>
-            <p className="text-xs text-green-200">match wins</p>
+            <p className="text-4xl font-bold">{syndicatePts}</p>
+            <p className="text-xs text-green-200">points</p>
           </div>
         </div>
-        {s.tiedMatches > 0 && (
-          <p className="text-center text-xs text-green-300 mt-2">
-            {s.tiedMatches} tied match{s.tiedMatches > 1 ? "es" : ""}
-          </p>
-        )}
+        <p className="text-center text-xs text-green-300 mt-2">
+          {s.truffleMatchWins}–{s.syndicateMatchWins} in matches
+          {s.tiedMatches > 0 &&
+            `, ${s.tiedMatches} halved (½ each)`}
+        </p>
       </div>
 
       {day3Done && (
@@ -164,8 +164,20 @@ export default async function Day3LeaderboardPage({
               const th = m.truffleHolesWon;
               const sh = m.syndicateHolesWon;
               const hp = m.holesPlayed;
-              const complete = hp === 18;
-              const leading = th > sh ? "truffle" : sh > th ? "syndicate" : "tie";
+              const margin = Math.abs(th - sh);
+              const rem = 18 - hp;
+              const halved = hp === 18 && th === sh;
+              // a match is done when halved, played out, or clinched (lead > holes left)
+              const done = halved || hp === 18 || margin > rem;
+              const resultLabel = halved
+                ? "Halved"
+                : done
+                  ? rem > 0
+                    ? `${margin}&${rem}`
+                    : `${margin} up`
+                  : margin === 0
+                    ? `AS · thru ${hp}`
+                    : `${margin} up · thru ${hp}`;
               const isMyMatch =
                 userId !== null && (m.trufflePlayerId === userId || m.syndicatePlayerId === userId);
               return (
@@ -183,15 +195,14 @@ export default async function Day3LeaderboardPage({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
-                        <span className={cn(leading === "truffle" && !complete && "font-bold")}>
+                        <span className={cn(th > sh && "font-bold text-truffle")}>
                           {m.trufflePlayerName}
                         </span>
                         <span className="text-muted-foreground mx-1">vs</span>
-                        <span className={cn(leading === "syndicate" && !complete && "font-bold")}>
+                        <span className={cn(sh > th && "font-bold text-syndicate")}>
                           {m.syndicatePlayerName}
                         </span>
                       </p>
-                      <p className="text-xs text-muted-foreground">{hp}/18 holes</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {isMyMatch && (
@@ -199,19 +210,20 @@ export default async function Day3LeaderboardPage({
                           You
                         </span>
                       )}
-                      <div className="flex items-center gap-1 text-sm font-bold">
-                        <span className={cn(th > sh ? "text-truffle" : "text-muted-foreground")}>
-                          {th}
-                        </span>
-                        <span className="text-muted-foreground text-xs">-</span>
-                        <span
-                          className={cn(sh > th ? "text-syndicate" : "text-muted-foreground")}
-                        >
-                          {sh}
-                        </span>
-                      </div>
+                      <span
+                        className={cn(
+                          "text-sm font-bold",
+                          halved
+                            ? "text-muted-foreground"
+                            : th > sh
+                              ? "text-truffle"
+                              : "text-syndicate",
+                        )}
+                      >
+                        {resultLabel}
+                      </span>
                     </div>
-                    {complete && (
+                    {done && (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex-shrink-0">
                         Done
                       </span>

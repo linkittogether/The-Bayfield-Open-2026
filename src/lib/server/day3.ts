@@ -228,6 +228,9 @@ export async function getDay3Leaderboard(seasonId: number) {
       truffleMatchWins,
       syndicateMatchWins,
       tiedMatches,
+      // Ryder-Cup-style points: a win is 1, a halved match is ½ each.
+      trufflePoints: truffleMatchWins + tiedMatches * 0.5,
+      syndicatePoints: syndicateMatchWins + tiedMatches * 0.5,
       truffleTotalHoles,
       syndicateTotalHoles,
     },

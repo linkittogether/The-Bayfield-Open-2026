@@ -109,7 +109,7 @@ export default async function HomePage({
         </Link>
       )}
 
-      <div className="space-y-3 mb-5">
+      <div className="flex flex-col gap-3 mb-5">
         <DayCard day={1} title="Day 1 — Just You" subtitle="9 holes · Handicap scoring · Partner pick" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
         <DayCard day={2} title="Day 2 — Partner Up" subtitle="27 holes · Combined net score" complete={state?.day2Complete} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
         <DayCard day={3} title="Day 3 — 10 v 10" subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />

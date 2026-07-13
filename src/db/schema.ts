@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  date,
   integer,
   numeric,
   pgEnum,
@@ -116,10 +117,37 @@ export const segments = pgTable("segments", {
   sortOrder: integer().notNull(),
   label: text().notNull(), // e.g. "Bluewater", "Sunset back 9"
   holes: integer().notNull().default(9),
+  // The tee played for this segment (e.g. "White", "Blue"). Determines which
+  // rating/slope/par apply — the group plays different tees per course.
+  tee: text(),
+  // TheGrint round scope for pulling course data: "18", "F9" (front 9), or
+  // "B9" (back 9). Lets a tee change re-pull the right rating/slope/par.
+  grintRound: text(),
   rating: numeric({ precision: 4, scale: 1, mode: "number" }),
   slope: integer(),
   par: integer(),
+  // Calendar date this round was played (YYYY-MM-DD). Used to match a player's
+  // TheGrint round to this segment when importing scores. Nullable until set.
+  date: date({ mode: "string" }),
 });
+
+// Per-hole par + stroke index for a course/tee, sourced from TheGrint's course
+// data. The stroke index (hole handicap 1–18) drives match-play stroke
+// allocation. Keyed by (course, tee) since ratings/pars can differ by tee.
+export const courseHoles = pgTable(
+  "course_holes",
+  {
+    id: serial().primaryKey(),
+    courseId: integer()
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    tee: text().notNull(),
+    holeNumber: integer().notNull(),
+    par: integer(),
+    strokeIndex: integer(),
+  },
+  (t) => [unique().on(t.courseId, t.tee, t.holeNumber)],
+);
 
 export const segmentScores = pgTable(
   "segment_scores",
@@ -180,7 +208,13 @@ export const day3Holes = pgTable(
       .notNull()
       .references(() => day3Matches.id, { onDelete: "cascade" }),
     holeNumber: integer().notNull(),
-    winner: holeWinner().notNull(),
+    // Each player's gross on this hole (full-auto scoring). The net winner is
+    // computed from these + match-play strokes. Nullable until entered.
+    trufflePlayerGross: integer(),
+    syndicatePlayerGross: integer(),
+    // Legacy / manual override: the hole winner. Populated for 2025 (imported
+    // from match results, no per-hole grosses); computed from grosses otherwise.
+    winner: holeWinner(),
   },
   (t) => [unique().on(t.matchId, t.holeNumber)],
 );

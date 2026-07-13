@@ -113,7 +113,7 @@ export async function getDay1ScoreEntry(seasonId: number) {
   const roster = await getActiveRoster(seasonId);
   return {
     segment: seg
-      ? { rating: seg.rating, slope: seg.slope, par: seg.par, holes: seg.holes }
+      ? { id: seg.id, rating: seg.rating, slope: seg.slope, par: seg.par, holes: seg.holes }
       : null,
     players: roster.map((p) => ({
       id: p.id,

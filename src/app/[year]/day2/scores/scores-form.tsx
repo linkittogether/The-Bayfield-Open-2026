@@ -6,6 +6,7 @@ import { Check, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PlayerAvatar } from "@/components/player-avatar";
+import { GrintPullButton } from "@/components/grint-pull-button";
 import { cn } from "@/lib/utils";
 import { netForSegment } from "@/lib/handicap";
 import { formatNet } from "@/lib/format";
@@ -143,6 +144,7 @@ function SegmentEntry({
         </p>
         {existingGross != null && <Check size={14} className="text-green-500" />}
       </div>
+      <GrintPullButton segmentId={segment.id} playerId={player.id} onPulled={setGross} />
       <div className="flex items-center gap-3">
         <button
           type="button"

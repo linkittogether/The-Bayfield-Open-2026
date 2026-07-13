@@ -6,6 +6,7 @@ import { Check, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { PlayerAvatar } from "@/components/player-avatar";
+import { GrintPullButton } from "@/components/grint-pull-button";
 import { cn } from "@/lib/utils";
 import { netForSegment } from "@/lib/handicap";
 import { formatNet } from "@/lib/format";
@@ -19,6 +20,7 @@ interface PlayerLite {
 }
 
 interface SegmentLite {
+  id: number;
   rating: number | null;
   slope: number | null;
   par: number | null;
@@ -132,6 +134,10 @@ export function ScoresForm({
             ))}
           </div>
         </div>
+      )}
+
+      {selected && segment && (
+        <GrintPullButton segmentId={segment.id} playerId={selected} onPulled={setGross} />
       )}
 
       {selected && (

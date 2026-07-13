@@ -16,6 +16,9 @@
     "migrate:replit": "tsx --env-file=.env.local scripts/migrate-from-replit.ts",
     "grint:friends": "tsx --env-file=.env.local scripts/grint-friends.ts",
     "grint:handicaps": "tsx --env-file=.env.local scripts/grint-handicaps.ts",
+    "grint:round": "tsx --env-file=.env.local scripts/grint-round.ts",
+    "season:setup": "tsx --env-file=.env.local scripts/setup-season.ts",
+    "grint:import": "tsx --env-file=.env.local scripts/grint-import.ts",
     "backfill:seasons": "tsx --env-file=.env.local scripts/backfill-seasons.ts",
     "draft:seed": "tsx --env-file=.env.local scripts/day1-draft-testdata.ts seed",
     "draft:wipe": "tsx --env-file=.env.local scripts/day1-draft-testdata.ts wipe"

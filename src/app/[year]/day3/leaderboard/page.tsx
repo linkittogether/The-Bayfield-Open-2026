@@ -161,33 +161,21 @@ export default async function Day3LeaderboardPage({
           </h3>
           <div className="flex flex-col gap-3">
             {matches.map((m) => {
-              const th = m.truffleHolesWon;
-              const sh = m.syndicateHolesWon;
-              const hp = m.holesPlayed;
-              const margin = Math.abs(th - sh);
-              const rem = 18 - hp;
-              const halved = hp === 18 && th === sh;
-              // a match is done when halved, played out, or clinched (lead > holes left)
-              const done = halved || hp === 18 || margin > rem;
-              const resultLabel = halved
-                ? "Halved"
-                : done
-                  ? rem > 0
-                    ? `${margin}&${rem}`
-                    : `${margin} up`
-                  : margin === 0
-                    ? `AS · thru ${hp}`
-                    : `${margin} up · thru ${hp}`;
+              const done = m.status === "final";
+              const halved = m.winner === "halved";
+              const resultLabel = m.label || (done ? "Halved" : "—");
               const winnerEmoji = halved
                 ? "🤝"
-                : th > sh
+                : m.winner === "truffle"
                   ? "🐗"
-                  : sh > th
+                  : m.winner === "syndicate"
                     ? "🍄"
                     : "⛳";
-              // list the leader/winner first
-              const level = th === sh;
-              const truffleFirst = level || th > sh;
+              // list the leader/winner first (m.diff = truffle holes up)
+              const level = m.diff === 0;
+              const truffleFirst = m.diff >= 0;
+              const th = m.truffleHolesWon;
+              const sh = m.syndicateHolesWon;
               const first = truffleFirst
                 ? { name: m.trufflePlayerName, color: "text-truffle" }
                 : { name: m.syndicatePlayerName, color: "text-syndicate" };

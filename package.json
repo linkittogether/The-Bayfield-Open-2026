@@ -16,7 +16,9 @@
     "migrate:replit": "tsx --env-file=.env.local scripts/migrate-from-replit.ts",
     "grint:friends": "tsx --env-file=.env.local scripts/grint-friends.ts",
     "grint:handicaps": "tsx --env-file=.env.local scripts/grint-handicaps.ts",
-    "backfill:seasons": "tsx --env-file=.env.local scripts/backfill-seasons.ts"
+    "backfill:seasons": "tsx --env-file=.env.local scripts/backfill-seasons.ts",
+    "draft:seed": "tsx --env-file=.env.local scripts/day1-draft-testdata.ts seed",
+    "draft:wipe": "tsx --env-file=.env.local scripts/day1-draft-testdata.ts wipe"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

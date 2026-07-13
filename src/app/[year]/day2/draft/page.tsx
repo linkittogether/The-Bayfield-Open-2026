@@ -42,7 +42,7 @@ export default async function Day2DraftPage({
           captainName="Adison E"
           bgClass="bg-truffle-light"
           textClass="text-truffle"
-          players={teams.truffleHogs}
+          players={teams.truffleHogs.filter((p) => !p.absent)}
         />
 
         <TeamCard
@@ -51,7 +51,7 @@ export default async function Day2DraftPage({
           captainName="Josh W"
           bgClass="bg-syndicate-light"
           textClass="text-syndicate"
-          players={teams.myceliumSyndicate}
+          players={teams.myceliumSyndicate.filter((p) => !p.absent)}
         />
 
         {!readOnly && (

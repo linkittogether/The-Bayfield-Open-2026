@@ -40,7 +40,9 @@ export default async function Day3LeaderboardPage({
   const syndicateWins = s.syndicateMatchWins;
   const truffleLeading = truffleWins > syndicateWins;
   const tie = truffleWins === syndicateWins;
-  const allMatchesDone = matches.length > 0 && matches.every((m) => m.holesPlayed === 18);
+  // Match-play matches close out early (before 18), so a completed Day 3 is the
+  // season's day3Complete flag — not "every match reached 18 holes."
+  const day3Done = matches.length > 0 && season.day3Complete;
 
   return (
     <AppShell title="Day 3 — Huron Cup" year={yr}>
@@ -85,7 +87,7 @@ export default async function Day3LeaderboardPage({
         )}
       </div>
 
-      {allMatchesDone && (
+      {day3Done && (
         <div
           className={cn(
             "rounded-2xl p-5 text-center mb-5",

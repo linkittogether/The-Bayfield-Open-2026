@@ -4,7 +4,7 @@ import { ArrowRight, ChevronRight, Flag, Settings, Trophy, Users } from "lucide-
 import { AppShell } from "@/components/app-shell";
 import { cn } from "@/lib/utils";
 import { formatNet } from "@/lib/format";
-import { listPlayers } from "@/lib/server/players";
+import { getActiveRoster } from "@/lib/server/players";
 import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
 import { getDay3Matches } from "@/lib/server/day3";
 import { getSeasonState } from "@/lib/server/tournament";
@@ -22,7 +22,7 @@ export default async function HomePage({
   const [user, state, playerList, day1Lb, picks, matches] = await Promise.all([
     getCurrentUser(),
     getSeasonState(season.id),
-    listPlayers(),
+    getActiveRoster(season.id),
     getDay1Leaderboard(season.id),
     getDay1PicksOverview(season.id),
     getDay3Matches(season.id),

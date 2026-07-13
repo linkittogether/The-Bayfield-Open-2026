@@ -6,7 +6,7 @@ import { PlayerAvatar } from "@/components/player-avatar";
 import { cn } from "@/lib/utils";
 import { formatNet, ordinal } from "@/lib/format";
 import { getDay1Leaderboard } from "@/lib/server/day1";
-import { listPlayers } from "@/lib/server/players";
+import { getActiveRoster } from "@/lib/server/players";
 import { getSeasonState } from "@/lib/server/tournament";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
@@ -26,7 +26,7 @@ export default async function Day1LeaderboardPage({
   const [user, lb, players, state] = await Promise.all([
     getCurrentUser(),
     getDay1Leaderboard(season.id),
-    listPlayers(),
+    getActiveRoster(season.id),
     getSeasonState(season.id),
   ]);
 

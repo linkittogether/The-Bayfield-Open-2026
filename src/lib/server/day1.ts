@@ -6,12 +6,12 @@ import { db } from "@/db";
 import {
   day2Teams,
   players,
-  seasonRosters,
   seasons,
   segments,
   segmentScores,
 } from "@/db/schema";
 import { requireAdmin, requireAdminOrSelf } from "./auth-guards";
+import { getActiveRoster } from "./players";
 import { getCurrentSeasonId } from "./seasons";
 import { getSeasonScoring } from "./scoring";
 
@@ -110,29 +110,16 @@ async function getDay1Segment(seasonId: number) {
 /** Players (with season index) + the Friday segment, for the score-entry form. */
 export async function getDay1ScoreEntry(seasonId: number) {
   const seg = await getDay1Segment(seasonId);
-  const playerRows = await db
-    .select({
-      id: players.id,
-      name: players.name,
-      photoUrl: players.photoUrl,
-      handicap: players.handicap,
-    })
-    .from(players)
-    .orderBy(asc(players.name));
-  const idxRows = await db
-    .select({ playerId: seasonRosters.playerId, index: seasonRosters.handicapIndex })
-    .from(seasonRosters)
-    .where(eq(seasonRosters.seasonId, seasonId));
-  const idxBy = new Map(idxRows.map((r) => [r.playerId, r.index]));
+  const roster = await getActiveRoster(seasonId);
   return {
     segment: seg
       ? { rating: seg.rating, slope: seg.slope, par: seg.par, holes: seg.holes }
       : null,
-    players: playerRows.map((p) => ({
+    players: roster.map((p) => ({
       id: p.id,
       name: p.name,
       photoUrl: p.photoUrl,
-      index: idxBy.get(p.id) ?? p.handicap,
+      index: p.handicap,
     })),
   };
 }

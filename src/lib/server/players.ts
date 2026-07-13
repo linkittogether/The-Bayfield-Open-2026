@@ -1,10 +1,10 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { players } from "@/db/schema";
+import { players, seasonRosters } from "@/db/schema";
 import { requireAdmin } from "./auth-guards";
 import { deletePlayerPhoto, uploadPlayerPhoto } from "./photos";
 
@@ -49,6 +49,37 @@ export async function listPlayersByName() {
     .select(playerListColumns)
     .from(players)
     .orderBy(asc(players.name));
+}
+
+/**
+ * A season's active participants: the roster minus absent members, with that
+ * season's handicap index (falling back to the player's current handicap).
+ * This is the source of truth for "who's in season X" — use it instead of
+ * listPlayers() anywhere a season's player set is shown.
+ */
+export async function getActiveRoster(seasonId: number) {
+  const rows = await db
+    .select({
+      id: players.id,
+      name: players.name,
+      photoUrl: players.photoUrl,
+      seasonIndex: seasonRosters.handicapIndex,
+      globalHandicap: players.handicap,
+      isCaptain: seasonRosters.isCaptain,
+    })
+    .from(seasonRosters)
+    .innerJoin(players, eq(players.id, seasonRosters.playerId))
+    .where(
+      and(eq(seasonRosters.seasonId, seasonId), eq(seasonRosters.absent, false)),
+    )
+    .orderBy(asc(players.name));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    photoUrl: r.photoUrl,
+    handicap: r.seasonIndex ?? r.globalHandicap,
+    isCaptain: r.isCaptain,
+  }));
 }
 
 export async function getPlayer(id: number) {

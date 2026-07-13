@@ -13,6 +13,7 @@ import {
   teams,
 } from "@/db/schema";
 import { requireAdmin, requireAdminOrSelf } from "./auth-guards";
+import { getActiveRoster } from "./players";
 import { getCurrentSeasonId } from "./seasons";
 import { getSeasonScoring, getSegments } from "./scoring";
 
@@ -127,20 +128,7 @@ export async function getDay2Leaderboard(
 /** Segments, players (with season index), and existing grosses for score entry. */
 export async function getDay2ScoreEntry(seasonId: number) {
   const segs = await getSegments(seasonId, 2);
-  const playerRows = await db
-    .select({
-      id: players.id,
-      name: players.name,
-      photoUrl: players.photoUrl,
-      handicap: players.handicap,
-    })
-    .from(players)
-    .orderBy(asc(players.name));
-  const idxRows = await db
-    .select({ playerId: seasonRosters.playerId, index: seasonRosters.handicapIndex })
-    .from(seasonRosters)
-    .where(eq(seasonRosters.seasonId, seasonId));
-  const idxByPlayer = new Map(idxRows.map((r) => [r.playerId, r.index]));
+  const roster = await getActiveRoster(seasonId);
 
   const scoreRows = await db
     .select({
@@ -154,11 +142,11 @@ export async function getDay2ScoreEntry(seasonId: number) {
 
   return {
     segments: segs,
-    players: playerRows.map((p) => ({
+    players: roster.map((p) => ({
       id: p.id,
       name: p.name,
       photoUrl: p.photoUrl,
-      index: idxByPlayer.get(p.id) ?? p.handicap,
+      index: p.handicap,
     })),
     scores: scoreRows,
   };

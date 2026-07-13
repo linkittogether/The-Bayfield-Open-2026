@@ -185,6 +185,16 @@ export default async function Day3LeaderboardPage({
                   : sh > th
                     ? "🍄"
                     : "⛳";
+              // list the leader/winner first
+              const level = th === sh;
+              const truffleFirst = level || th > sh;
+              const first = truffleFirst
+                ? { name: m.trufflePlayerName, color: "text-truffle" }
+                : { name: m.syndicatePlayerName, color: "text-syndicate" };
+              const second = truffleFirst
+                ? { name: m.syndicatePlayerName, color: "text-syndicate" }
+                : { name: m.trufflePlayerName, color: "text-truffle" };
+              const sep = done && !level ? "def." : "vs";
               const isMyMatch =
                 userId !== null && (m.trufflePlayerId === userId || m.syndicatePlayerId === userId);
               return (
@@ -205,13 +215,11 @@ export default async function Day3LeaderboardPage({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">
-                        <span className={cn(th > sh && "font-bold text-truffle")}>
-                          {m.trufflePlayerName}
+                        <span className={cn(!level && `font-bold ${first.color}`)}>
+                          {first.name}
                         </span>
-                        <span className="text-muted-foreground mx-1">vs</span>
-                        <span className={cn(sh > th && "font-bold text-syndicate")}>
-                          {m.syndicatePlayerName}
-                        </span>
+                        <span className="text-muted-foreground mx-1">{sep}</span>
+                        <span className="text-muted-foreground">{second.name}</span>
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">

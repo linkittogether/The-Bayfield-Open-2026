@@ -159,7 +159,7 @@ export default async function Day3LeaderboardPage({
           <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Matches
           </h3>
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {matches.map((m) => {
               const th = m.truffleHolesWon;
               const sh = m.syndicateHolesWon;

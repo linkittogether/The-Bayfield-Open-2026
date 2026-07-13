@@ -1,9 +1,10 @@
 # The Bayfield Open — Tournament Mechanics
 
 > **Source of truth:** how the tournament *actually* runs is defined by the annual
-> results spreadsheet (e.g. `Bayfield open 2025.xlsx`) and the organizers — **not** by
-> the current code. Where the code disagrees, the code is wrong. This document is the
-> reference the app should be reshaped toward.
+> results spreadsheet (e.g. `Bayfield open 2025.xlsx`) and the organizers. This document
+> describes those mechanics; the app now implements them (see **Implementation** below).
+> Courses, tees, and dates **change year to year** and are **configured per season** —
+> they are never hardcoded (see **Course & tee configuration**).
 
 ## Overview
 
@@ -27,96 +28,134 @@ A 3-day weekend, ~20 players. **Friday and Saturday are individual stroke play**
 
 ## Scoring model (the important part)
 
-The fundamental unit is a **9-hole segment**, and **each 9 has its own Course Rating,
-Slope, and Par**. The set of courses played — and whether a day is three 9s or an 18 + a
-9 — **changes from year to year**.
+### Stroke play (Friday + Saturday)
 
-For each segment:
+The fundamental unit is a **segment** — normally a 9, sometimes an 18 — and **each segment
+has its own Course Rating, Slope, and Par** for the tee played.
 
 ```
-courseHandicap = Index × (Slope / 113) + (CourseRating − Par)      (halve the inputs for a 9)
+courseHandicap = Index × (Slope / 113) + (CourseRating − Par)      (halve the index for a 9)
 net(segment)   = gross(segment) − courseHandicap
 ```
 
-- `courseHandicap` is **fractional and may be negative** (a low handicap on a short/easy
-  nine). It is **not** rounded (the spreadsheet keeps full precision).
+- `courseHandicap` is **fractional and may be negative** (a low index on a short/easy
+  nine). It is **not** rounded — the spreadsheet keeps full precision.
 - A player's **weekend net = the sum of their segment nets.**
-- `Index` (handicap index) comes from **The Grint**.
+- `Index` (handicap index) comes from **The Grint**, stored **per season**.
+
+### Match play (Sunday)
+
+Singles matches are **handicapped**:
+
+- Each player's **18-hole course handicap** is computed from their season index and the
+  Sunday course's rating/slope/par for the chosen tee, then **rounded to a whole number**
+  (you can't give a fractional stroke on a hole).
+- The higher-handicap player receives **100% of the difference** between the two course
+  handicaps, allocated to holes by **stroke index** (hardest holes first; a second pass
+  if the difference exceeds 18).
+- A hole is won by the **lower net** (gross − strokes received on that hole); equal net
+  halves it. The match result follows standard closeout (`3&2`, `1 up`, `AS`).
 
 ## The three days
 
-| Day | Course / holes | Format | What it drives |
-|-----|----------------|--------|----------------|
-| **Friday (Day 1)** | Bluewater, **9 holes** | Individual stroke | Net ranking → the Saturday **pairing draft** |
-| **Saturday (Day 2)** | Sunset, **27 holes** | Individual stroke (own ball) | The **Pairs** competition |
-| **Sunday (Day 3)** | **18 holes** | Team **match play** | The **Huron Cup** |
+| Day | Format | Holes | Drives |
+|-----|--------|-------|--------|
+| **Friday (Day 1)** | Individual stroke | one **9** | Net ranking → the Saturday **pairing draft** |
+| **Saturday (Day 2)** | Individual stroke (own ball) | **27** (typically a 9 + an 18) | The **Pairs** competition |
+| **Sunday (Day 3)** | Team **match play** (handicapped) | **18** | The **Huron Cup** |
 
-### Friday — Bluewater (9 holes)
-Everyone plays the same 9 holes; record gross + net. The net ranking then drives the
-**pairing draft** for Saturday:
+*Which courses/tees are used each day is per-season configuration — see below.*
+
+### Friday — 9 holes
+Everyone plays the same 9; record gross + net. The net ranking drives the **pairing draft**
+for Saturday:
 
 - Rank all players by Friday net.
 - The **top 10 are pickers**; **10th place picks first**, then 9th, 8th … down to 1st.
 - Each picker chooses a partner from the **bottom 10** (ranks 11–20).
 - Result: **10 pairs** for Saturday. (Field is assumed to be 20.)
 
-### Saturday — Sunset (27 holes)
+### Saturday — 27 holes
 Individual stroke play — **each player plays their own ball** (it is **not** a scramble).
-Each nine is netted on its own rating/slope. The **Pairs** competition ranks the 10 pairs
-by their **combined cumulative net** — i.e. both partners' **Friday 9 + Saturday 27**
+Each segment is netted on its own rating/slope. The **Pairs** competition ranks the 10
+pairs by their **combined cumulative net** — both partners' **Friday 9 + Saturday 27**
 (36 holes total). Lowest combined net wins the **trophy and the jackets** until next year.
 
 ### Sunday — Match play (18 holes)
 Two 10-player teams play **10 head-to-head matches** (one Truffle Hog vs one Mycelium
-member each). Match play is by holes won and **often ends before 18 holes**.
+member each), handicapped as described in the scoring model. Match play is by holes won
+and **often ends before 18 holes**.
 
 - **Matchups are drafted Saturday night by the two captains**, alternating
   **nominate / select**: Captain A nominates one of his players → Captain B selects one of
   his to oppose (that pairing is set) → then it **flips** (B nominates, A selects) →
   repeat until all 10 matches are set.
-- The team that wins the most matches takes the **Huron Cup**.
+- The team that wins the most matches takes the **Huron Cup** (Ryder-Cup half-points; a
+  halved match is ½ each).
+
+## Course & tee configuration
+
+Courses, tees, and dates are **not fixed** — they are declared **per season** and drive
+what the app pulls from The Grint.
+
+- Each day's rounds are stored as **segments** (`day`, `holes`, `date`, `tee`, and a link
+  to a `course`); each course carries its **Grint course id**.
+- **`scripts/setup-season.ts`** (`npm run season:setup`) is the declarative per-year config.
+  Given a course + tee, it **auto-pulls Course Rating / Slope / Par from The Grint** (and,
+  for the Sunday course, the per-hole **stroke index** into `course_holes`).
+- The group generally plays **the regular members' tees** (White/Blue where they exist),
+  **not** the back/tournament tees — and the right tee varies by course. Tees are
+  **selectable in the app** at **`/[year]/courses`** (admin); changing a tee re-pulls the
+  rating/slope/par + stroke index. Use `npm run grint:tees -- --course "<name>"` to see a
+  course's exact Grint tee names.
+
+*Illustrative only (subject to change): 2025 = Bluewater (Fri 9) + Goderich Sunset (Sat
+back-9 + 18); 2026 = Bluewater (Fri 9) + Ironwood (Sat back-9 + 18) + Woodlands Links
+(Sun match play).*
 
 ## Handicaps & The Grint
 
-Goal: a player can **either** have their scores imported from The Grint **or** enter them
-in the app, and get the **same** result. Since both use the **WHS** course-handicap
-formula above, this is achievable if the app:
+A player's scores can be **imported from The Grint** or **entered in the app**, and both
+give the **same** result (same WHS formula). This is shipped:
 
-1. Stores each nine's **Course Rating, Slope, and Par** (matching the tees Grint uses).
-2. Uses the player's Grint **index** as the input.
-3. Agrees on **rounding** — the spreadsheet uses **unrounded** course handicaps; Grint
-   typically *displays* a rounded integer. Keep unrounded to match tournament tradition,
-   and **validate against 2–3 players' Grint values** before trusting the calc.
+- **Index/handicap sync** from Grint profiles (`npm run grint:handicaps`).
+- **Stroke-play import**: batch (`npm run grint:import`, matched by course + holes + date)
+  or a per-player **“Pull from The Grint”** button on the Day 1/2 score forms.
+- **Match-play import**: **“Pull match from The Grint”** fills both players' Sunday round
+  hole-by-hole from their logged scorecards.
+- WHS parity with Grint was validated: our unrounded stroke-play course handicap matches
+  Grint's inputs, and the back-solved 2025 slopes reproduce the sheet exactly.
 
-Note: **match play (Sunday) uses relative strokes** (the difference between the two
-players' handicaps), a separate allowance from the stroke-play course handicap.
-
-## Where the current code diverges (re-model targets)
-
-- **Day 2 is modeled as a scramble** (`day2_teams` + `day2_round_scores` with one combined
-  pair score over 3 rounds). Reality: 27-hole **individual** stroke; the pair result is
-  the **sum of two individual cumulative nets**.
-- **Handicaps/net:** code computes `net = gross − floor(handicap/2)` and stores an
-  **integer**. Reality: **per-9 WHS course handicap, fractional, summed**. There is no
-  course/nine (rating/slope/par) model, and `players.handicap` is a single global value
-  (no per-season handicap).
-- **Day 3:** match-play structure (matches + per-hole winner) is roughly right, but the
-  **captains' nominate/select draft** is not modeled — the app only stores the resulting
-  matches.
-- **Day 1 draft** (rank 10 → 1 picks from the bottom 10) is essentially correct.
+Rounding differs by format: **stroke play stays unrounded** (tournament tradition); **match
+play rounds** each course handicap to a whole number so strokes fall on whole holes.
 
 ## Resolved decisions
 
-- **Huron Cup is decided by Sunday match play** (most matches won) — resolved 2026-07-12.
-  The summed team net (the 2025 sheet's ~1491 vs ~1517) is a **nice-to-have** we still
-  compute and display, but it does **not** decide the cup. 2025's actual Sunday match
-  results aren't in the sheet, so 2025's Huron Cup result stays unrecorded (only its team
-  net-sum is reconstructable).
+- **Huron Cup is decided by Sunday match play** (most matches won). The summed team net
+  (the 2025 sheet's ~1491 vs ~1517) is a **nice-to-have** we still compute and display, but
+  it does **not** decide the cup.
+- **Match-play handicap allowance is 100%** of the difference in (rounded) course handicaps,
+  allocated by stroke index.
+
+## Implementation
+
+- **WHS engine:** `src/lib/handicap.ts` (stroke play); **match-play engine:**
+  `src/lib/matchplay.ts` (strokes, per-hole net winner, closeout).
+- **Scoring/standings:** `src/lib/server/scoring.ts`; **days:** `src/lib/server/day1.ts`,
+  `day2.ts`, `day3.ts`.
+- **Grint:** `src/lib/server/grint-rounds.ts` (fetch rounds / course data / hole scores),
+  `grint-import.ts` (matching), plus `scripts/grint-*.ts` and `setup-season.ts`.
+- **Data model:** `seasons`, `teams`, `season_rosters`, `courses` (+ `grintCourseId`),
+  `segments` (+ `tee`/`date`/`grintRound`), `segment_scores`, `course_holes`,
+  `day2_teams`, `day3_matches`, `day3_holes` (per-hole grosses; legacy `winner` retained
+  for imported 2025 rounds).
 
 ## 2025 import status
 
-- Imported: 2025 season, team rosters (10v10), **all stroke-play segment scores**
-  (Bluewater 9 + Sunset back 9 + Sunset 18) and per-season handicap indices → the
-  Individual and Pairs standings compute correctly (verified against the sheet).
-- Not imported: **Sunday match-play results** (no hole-by-hole data exists in the sheet).
-  The 2025 team net-sum is computable as the informational secondary standing.
+- Imported: 2025 season, team rosters (10v10), **all stroke-play segment scores** and
+  per-season handicap indices → the Individual and Pairs standings compute correctly
+  (verified against the sheet).
+- Sunday match play was imported as **per-hole winners** (reconstructed from the recorded
+  results, since the sheet has no hole-by-hole grosses) → Mycelium won the Huron Cup
+  **6.5–3.5**. The match-play engine falls back to these stored winners for 2025; from 2026
+  on, matches are scored from per-hole grosses.

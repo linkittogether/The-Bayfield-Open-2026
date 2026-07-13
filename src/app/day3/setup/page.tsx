@@ -46,6 +46,8 @@ export default async function Day3SetupPage() {
         syndicate={teams.myceliumSyndicate
           .filter((p) => !p.absent)
           .map((p) => ({ id: p.playerId, name: p.name }))}
+        truffleCaptain={teams.truffleHogs.find((p) => p.isCaptain)?.name}
+        syndicateCaptain={teams.myceliumSyndicate.find((p) => p.isCaptain)?.name}
       />
     </AppShell>
   );

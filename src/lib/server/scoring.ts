@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { segmentScores, segments, seasonRosters } from "@/db/schema";
+import { segmentScores, segments, seasonRosters, teams } from "@/db/schema";
 import { netForSegment } from "@/lib/handicap";
 
 export interface SegmentDef {
@@ -112,6 +112,51 @@ export async function getSeasonScoring(seasonId: number): Promise<SeasonScoring>
   }
 
   return { segments: segs, day1SegmentId: day1Seg?.id ?? null, byPlayer };
+}
+
+export interface TeamNet {
+  slug: string;
+  name: string;
+  /** Sum of the team's active members' cumulative nets (null if none scored yet). */
+  net: number | null;
+  playerCount: number;
+  scoredCount: number;
+}
+
+/**
+ * The Huron Cup "nice-to-have" secondary standing: each team's combined cumulative
+ * net (active members only). Informational — the cup itself is decided by Sunday
+ * match play, not this.
+ */
+export async function getTeamNetStandings(seasonId: number): Promise<TeamNet[]> {
+  const scoring = await getSeasonScoring(seasonId);
+  const roster = await db
+    .select({
+      playerId: seasonRosters.playerId,
+      absent: seasonRosters.absent,
+      slug: teams.slug,
+      name: teams.name,
+    })
+    .from(seasonRosters)
+    .innerJoin(teams, eq(teams.id, seasonRosters.teamId))
+    .where(eq(seasonRosters.seasonId, seasonId));
+
+  const byTeam = new Map<string, TeamNet>();
+  for (const r of roster) {
+    if (r.absent) continue;
+    let t = byTeam.get(r.slug);
+    if (!t) {
+      t = { slug: r.slug, name: r.name, net: null, playerCount: 0, scoredCount: 0 };
+      byTeam.set(r.slug, t);
+    }
+    t.playerCount += 1;
+    const net = scoring.byPlayer.get(r.playerId)?.cumulativeNet ?? null;
+    if (net != null) {
+      t.net = (t.net ?? 0) + net;
+      t.scoredCount += 1;
+    }
+  }
+  return [...byTeam.values()].sort((a, b) => (a.net ?? Infinity) - (b.net ?? Infinity));
 }
 
 /** The season's stroke-play segments, ordered (optionally filtered to a day). */

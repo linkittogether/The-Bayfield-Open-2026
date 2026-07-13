@@ -4,19 +4,24 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getDay3Leaderboard, getDay3Matches, getDay3Teams } from "@/lib/server/day3";
+import { getTeamNetStandings } from "@/lib/server/scoring";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
+import { formatNet } from "@/lib/format";
 
 export const metadata = { title: "Day 3 — Huron Cup" };
 
 export default async function Day3LeaderboardPage() {
   const { viewed: season, readOnly } = await getSeasonView();
-  const [user, lb, matches, teams] = await Promise.all([
+  const [user, lb, matches, teams, teamNet] = await Promise.all([
     getCurrentUser(),
     getDay3Leaderboard(season.id),
     getDay3Matches(season.id),
     getDay3Teams(season.id),
+    getTeamNetStandings(season.id),
   ]);
+  const truffleNet = teamNet.find((t) => t.slug === "truffle_hogs");
+  const syndicateNet = teamNet.find((t) => t.slug === "mycelium_syndicate");
 
   const isAdmin = user?.kind === "admin";
   const userId = user?.kind === "player" ? user.player.id : null;
@@ -94,6 +99,40 @@ export default async function Day3LeaderboardPage() {
                 : "It's a Draw!"}
           </p>
           <p className="text-sm mt-1 text-muted-foreground">Huron Cup Champions {season.year}</p>
+        </div>
+      )}
+
+      {(truffleNet?.net != null || syndicateNet?.net != null) && (
+        <div className="bg-white border border-border rounded-2xl p-4 mb-5">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider text-center">
+            Team Net · nice-to-have
+          </p>
+          <p className="text-[11px] text-muted-foreground text-center mb-3">
+            Combined stroke-play net — informational; the cup is decided by match play
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {[truffleNet, syndicateNet].map((t, i) =>
+              t ? (
+                <div
+                  key={t.slug}
+                  className={cn(
+                    "rounded-xl p-3 text-center",
+                    i === 0 ? "bg-truffle-light" : "bg-syndicate-light",
+                  )}
+                >
+                  <p className={cn("text-sm font-bold", i === 0 ? "text-truffle" : "text-syndicate")}>
+                    {i === 0 ? "🐗" : "🍄"} {t.name}
+                  </p>
+                  <p className="text-2xl font-bold mt-1">
+                    {t.net != null ? formatNet(t.net) : "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {t.scoredCount}/{t.playerCount} scored
+                  </p>
+                </div>
+              ) : null,
+            )}
+          </div>
         </div>
       )}
 

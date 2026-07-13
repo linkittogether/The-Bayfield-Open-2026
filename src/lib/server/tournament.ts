@@ -1,18 +1,19 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
-  day1Scores,
-  day2RoundScores,
   day2Teams,
   day3Holes,
   day3Matches,
-  day3Players,
-  tournamentState,
+  seasonRosters,
+  seasons,
+  segmentScores,
+  segments,
 } from "@/db/schema";
 import { requireAdmin } from "./auth-guards";
+import { assertCurrentSeason } from "./seasons";
 
 const updateSchema = z
   .object({
@@ -25,44 +26,57 @@ const updateSchema = z
     day3Complete: z.boolean().optional(),
     nextPickerRank: z.number().int().nullable().optional(),
   })
-  .refine(
-    (v) => Object.keys(v).length > 0,
-    "At least one field is required",
-  );
+  .refine((v) => Object.keys(v).length > 0, "At least one field is required");
 
-export async function getTournamentState() {
+/** The tournament state now lives on the seasons row. */
+export async function getSeasonState(seasonId: number) {
   const [row] = await db
     .select()
-    .from(tournamentState)
-    .where(eq(tournamentState.id, 1))
+    .from(seasons)
+    .where(eq(seasons.id, seasonId))
     .limit(1);
   return row ?? null;
 }
 
-export async function updateTournamentState(
+export async function updateSeasonState(
+  seasonId: number,
   input: z.input<typeof updateSchema>,
 ) {
   await requireAdmin();
+  await assertCurrentSeason(seasonId);
   const data = updateSchema.parse(input);
   const [row] = await db
-    .update(tournamentState)
+    .update(seasons)
     .set(data)
-    .where(eq(tournamentState.id, 1))
+    .where(eq(seasons.id, seasonId))
     .returning();
   return row;
 }
 
-export async function resetTournament() {
+/** Deletes all results for one season and resets its state fields. */
+export async function resetSeason(seasonId: number) {
   await requireAdmin();
+  await assertCurrentSeason(seasonId);
   await db.transaction(async (tx) => {
-    await tx.delete(day3Holes);
-    await tx.delete(day3Matches);
-    await tx.delete(day3Players);
-    await tx.delete(day2RoundScores);
-    await tx.delete(day2Teams);
-    await tx.delete(day1Scores);
+    const matchIds = tx
+      .select({ id: day3Matches.id })
+      .from(day3Matches)
+      .where(eq(day3Matches.seasonId, seasonId));
+    await tx.delete(day3Holes).where(inArray(day3Holes.matchId, matchIds));
+    await tx.delete(day3Matches).where(eq(day3Matches.seasonId, seasonId));
+
+    await tx.delete(day2Teams).where(eq(day2Teams.seasonId, seasonId));
+
+    // Stroke-play scores now live in segment_scores (scoped via their segment).
+    const segIds = tx
+      .select({ id: segments.id })
+      .from(segments)
+      .where(eq(segments.seasonId, seasonId));
+    await tx.delete(segmentScores).where(inArray(segmentScores.segmentId, segIds));
+    await tx.delete(seasonRosters).where(eq(seasonRosters.seasonId, seasonId));
+
     await tx
-      .update(tournamentState)
+      .update(seasons)
       .set({
         currentDay: 1,
         day1Complete: false,
@@ -73,7 +87,7 @@ export async function resetTournament() {
         day3Complete: false,
         nextPickerRank: 10,
       })
-      .where(eq(tournamentState.id, 1));
+      .where(eq(seasons.id, seasonId));
   });
   return { ok: true };
 }

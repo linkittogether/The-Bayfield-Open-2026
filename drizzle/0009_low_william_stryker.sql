@@ -1,0 +1,1 @@
+ALTER TABLE "segments" ADD COLUMN "grint_round" text;

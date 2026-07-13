@@ -1,68 +1,44 @@
-import bcrypt from "bcryptjs";
-import { inArray } from "drizzle-orm";
-import { db } from "../src/db";
-import { day1Scores, players } from "../src/db/schema";
 import { getDay1Leaderboard, getDay1PicksOverview } from "../src/lib/server/day1";
 import { getDay2Leaderboard } from "../src/lib/server/day2";
 import { getDay3Leaderboard } from "../src/lib/server/day3";
-import { getTournamentState } from "../src/lib/server/tournament";
+import { getCurrentSeasonId } from "../src/lib/server/seasons";
+import { getSeasonState } from "../src/lib/server/tournament";
 
+/**
+ * Read-only smoke test: the season's leaderboard/state queries run and return
+ * sane shapes. (Scores now come from segment_scores with computed WHS nets, so
+ * this no longer inserts test day1_scores.)
+ */
 async function main() {
-  const pinHash = await bcrypt.hash("0000", 12);
-  const inserted = await db
-    .insert(players)
-    .values([
-      { name: "_smoke_A", handicap: 10, pinHash },
-      { name: "_smoke_B", handicap: 4, pinHash },
-    ])
-    .returning({ id: players.id, name: players.name });
-  const [a, b] = inserted;
-  const cleanupIds = [a.id, b.id];
+  const seasonId = await getCurrentSeasonId();
 
-  try {
-    // net = gross - floor(handicap/2)
-    // A: 95 - floor(10/2) = 90, B: 80 - floor(4/2) = 78
-    await db.insert(day1Scores).values([
-      { playerId: a.id, grossScore: 95, netScore: 90 },
-      { playerId: b.id, grossScore: 80, netScore: 78 },
-    ]);
-
-    const lb = await getDay1Leaderboard();
-    const ours = lb.filter((r) => cleanupIds.includes(r.id));
-    if (ours.length !== 2) throw new Error(`expected 2 rows, got ${ours.length}`);
-    const bRow = ours.find((r) => r.id === b.id)!;
-    const aRow = ours.find((r) => r.id === a.id)!;
-    if (bRow.netScore !== 78) throw new Error(`B net wrong: ${bRow.netScore}`);
-    if (aRow.netScore !== 90) throw new Error(`A net wrong: ${aRow.netScore}`);
-    if (bRow.rank >= aRow.rank)
-      throw new Error(`B should outrank A (lower net), got B=${bRow.rank} A=${aRow.rank}`);
-    console.log("✓ day1 leaderboard ranks + net calc correct");
-
-    const picks = await getDay1PicksOverview();
-    if (!picks.state || picks.state.id !== 1)
-      throw new Error("picks overview missing tournament state");
-    console.log("✓ day1 picks overview query runs");
-
-    const day2lb = await getDay2Leaderboard();
-    if (!Array.isArray(day2lb))
-      throw new Error("day2 leaderboard should return array");
-    console.log(`✓ day2 leaderboard query runs (${day2lb.length} teams)`);
-
-    const day3lb = await getDay3Leaderboard();
-    if (typeof day3lb.summary.truffleMatchWins !== "number")
-      throw new Error("day3 summary shape wrong");
-    console.log(
-      `✓ day3 leaderboard query runs (${day3lb.matches.length} matches)`,
-    );
-
-    const state = await getTournamentState();
-    if (!state || state.id !== 1) throw new Error("tournament state missing");
-    console.log(`✓ tournament state row present (currentDay=${state.currentDay})`);
-
-    console.log("\nALL SMOKE TESTS PASSED");
-  } finally {
-    await db.delete(players).where(inArray(players.id, cleanupIds));
+  const lb = await getDay1Leaderboard(seasonId);
+  if (!Array.isArray(lb)) throw new Error("day1 leaderboard should return an array");
+  for (let i = 1; i < lb.length; i++) {
+    if (lb[i].netScore < lb[i - 1].netScore)
+      throw new Error("day1 leaderboard not sorted ascending by net");
   }
+  console.log(`✓ day1 leaderboard runs + sorted (${lb.length} scored)`);
+
+  const picks = await getDay1PicksOverview(seasonId);
+  if (!picks.state || picks.state.id !== seasonId)
+    throw new Error("picks overview missing season state");
+  console.log("✓ day1 picks overview runs");
+
+  const day2lb = await getDay2Leaderboard(seasonId);
+  if (!Array.isArray(day2lb)) throw new Error("day2 leaderboard should return an array");
+  console.log(`✓ day2 leaderboard runs (${day2lb.length} pairs)`);
+
+  const day3lb = await getDay3Leaderboard(seasonId);
+  if (typeof day3lb.summary.truffleMatchWins !== "number")
+    throw new Error("day3 summary shape wrong");
+  console.log(`✓ day3 leaderboard runs (${day3lb.matches.length} matches)`);
+
+  const state = await getSeasonState(seasonId);
+  if (!state || state.id !== seasonId) throw new Error("season state missing");
+  console.log(`✓ season state present (currentDay=${state.currentDay})`);
+
+  console.log("\nALL SMOKE TESTS PASSED");
 }
 
 main()

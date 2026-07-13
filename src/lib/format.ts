@@ -2,6 +2,12 @@ export function netScore9(gross: number, handicap: number): number {
   return gross - Math.floor(handicap / 2);
 }
 
+/** Format a (fractional) net score to one decimal, or an em-dash when absent. */
+export function formatNet(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return (Math.round(n * 10) / 10).toFixed(1);
+}
+
 export function formatScore(score: number): string {
   if (score > 0) return `+${score}`;
   return String(score);

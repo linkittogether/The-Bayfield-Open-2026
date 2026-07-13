@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Pre-migration Replit app, kept for reference only. Not built or shipped
+    // (also excluded in tsconfig.json), so it shouldn't be linted.
+    "_replit-original/**",
   ]),
 ]);
 

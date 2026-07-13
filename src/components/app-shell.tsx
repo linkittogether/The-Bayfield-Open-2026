@@ -2,14 +2,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, LogIn } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
+import { getCurrentSeason, listSeasons } from "@/lib/server/seasons";
 import { AuthButton } from "./auth-button";
 import { BottomNav } from "./bottom-nav";
+import { SeasonSelector } from "./season-selector";
 
 interface AppShellProps {
   children: React.ReactNode;
   title?: string;
   showBack?: boolean;
   backTo?: string;
+  /** The season year this page is scoped to (from the /[year] path segment). */
+  year: number;
 }
 
 export async function AppShell({
@@ -17,8 +21,13 @@ export async function AppShell({
   title,
   showBack,
   backTo,
+  year,
 }: AppShellProps) {
-  const user = await getCurrentUser();
+  const [user, seasonList, currentSeason] = await Promise.all([
+    getCurrentUser(),
+    listSeasons(),
+    getCurrentSeason(),
+  ]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -26,7 +35,7 @@ export async function AppShell({
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           {showBack && (
             <Link
-              href={backTo || "/"}
+              href={backTo || `/${year}`}
               className="p-1 rounded-full hover:bg-white/20 transition-colors"
             >
               <ArrowLeft size={20} />
@@ -54,6 +63,14 @@ export async function AppShell({
             )}
           </div>
 
+          {seasonList.length > 0 && (
+            <SeasonSelector
+              years={seasonList.map((s) => s.year)}
+              viewedYear={year}
+              currentYear={currentSeason.year}
+            />
+          )}
+
           {user ? (
             <AuthButton kind={user.kind} name={user.kind === "admin" ? user.admin.username : user.player.name} />
           ) : (
@@ -72,7 +89,7 @@ export async function AppShell({
         {children}
       </main>
 
-      <BottomNav />
+      <BottomNav year={year} />
     </div>
   );
 }

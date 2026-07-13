@@ -1,0 +1,1 @@
+ALTER TABLE "segments" ADD COLUMN "date" date;

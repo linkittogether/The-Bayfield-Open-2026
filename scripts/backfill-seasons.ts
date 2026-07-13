@@ -1,7 +1,6 @@
 import { eq, isNull } from "drizzle-orm";
 import { db } from "../src/db";
 import {
-  day1Scores,
   day2Teams,
   day3Matches,
   players,
@@ -74,7 +73,6 @@ async function main() {
     const teamIdBySlug = new Map(teamRows.map((t) => [t.slug, t.id]));
 
     // 4. Stamp season_id onto all existing result rows (all are 2026).
-    await tx.update(day1Scores).set({ seasonId: season.id });
     await tx.update(day2Teams).set({ seasonId: season.id });
     await tx.update(day3Matches).set({ seasonId: season.id });
 
@@ -113,7 +111,6 @@ async function main() {
 
     // 6. Assertions + coverage report.
     for (const [label, table] of [
-      ["day1_scores", day1Scores],
       ["day2_teams", day2Teams],
       ["day3_matches", day3Matches],
     ] as const) {

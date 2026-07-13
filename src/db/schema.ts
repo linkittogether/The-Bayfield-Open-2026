@@ -143,22 +143,6 @@ export const admins = pgTable("admins", {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
-export const day1Scores = pgTable(
-  "day1_scores",
-  {
-    id: serial().primaryKey(),
-    seasonId: integer()
-      .notNull()
-      .references(() => seasons.id, { onDelete: "cascade" }),
-    playerId: integer()
-      .notNull()
-      .references(() => players.id, { onDelete: "cascade" }),
-    grossScore: integer().notNull(),
-    netScore: integer().notNull(),
-  },
-  (t) => [unique().on(t.seasonId, t.playerId)],
-);
-
 export const day2Teams = pgTable("day2_teams", {
   id: serial().primaryKey(),
   seasonId: integer()
@@ -173,21 +157,6 @@ export const day2Teams = pgTable("day2_teams", {
   pickOrder: integer().notNull(),
   name: text(),
 });
-
-export const day2RoundScores = pgTable(
-  "day2_round_scores",
-  {
-    id: serial().primaryKey(),
-    teamId: integer()
-      .notNull()
-      .references(() => day2Teams.id, { onDelete: "cascade" }),
-    roundNumber: integer().notNull(),
-    player1Gross: integer().notNull(),
-    player2Gross: integer().notNull(),
-    netScore: integer().notNull(),
-  },
-  (t) => [unique().on(t.teamId, t.roundNumber)],
-);
 
 export const day3Matches = pgTable("day3_matches", {
   id: serial().primaryKey(),

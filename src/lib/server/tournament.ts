@@ -4,13 +4,13 @@ import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
-  day1Scores,
-  day2RoundScores,
   day2Teams,
   day3Holes,
   day3Matches,
   seasonRosters,
   seasons,
+  segmentScores,
+  segments,
 } from "@/db/schema";
 import { requireAdmin } from "./auth-guards";
 import { assertCurrentSeason } from "./seasons";
@@ -65,14 +65,14 @@ export async function resetSeason(seasonId: number) {
     await tx.delete(day3Holes).where(inArray(day3Holes.matchId, matchIds));
     await tx.delete(day3Matches).where(eq(day3Matches.seasonId, seasonId));
 
-    const teamIds = tx
-      .select({ id: day2Teams.id })
-      .from(day2Teams)
-      .where(eq(day2Teams.seasonId, seasonId));
-    await tx.delete(day2RoundScores).where(inArray(day2RoundScores.teamId, teamIds));
     await tx.delete(day2Teams).where(eq(day2Teams.seasonId, seasonId));
 
-    await tx.delete(day1Scores).where(eq(day1Scores.seasonId, seasonId));
+    // Stroke-play scores now live in segment_scores (scoped via their segment).
+    const segIds = tx
+      .select({ id: segments.id })
+      .from(segments)
+      .where(eq(segments.seasonId, seasonId));
+    await tx.delete(segmentScores).where(inArray(segmentScores.segmentId, segIds));
     await tx.delete(seasonRosters).where(eq(seasonRosters.seasonId, seasonId));
 
     await tx

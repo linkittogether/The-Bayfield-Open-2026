@@ -1,6 +1,6 @@
-import { and, ilike, isNotNull } from "drizzle-orm";
+import { and, eq, ilike, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
-import { players } from "@/db/schema";
+import { appConfig, players } from "@/db/schema";
 
 /**
  * Fetches a player's round history from TheGrint's score feed (the same list you
@@ -28,14 +28,125 @@ const BASE = "https://thegrint.com";
 const USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Safari/605.1.15";
 
-function requireCookie(): string {
-  const cookie = process.env.GRINT_COOKIE;
-  if (!cookie) {
+const COOKIE_KEY = "grint_cookie";
+
+// Cache of the live cookie for this server instance. Falls back to the DB
+// (persisted across cold starts) and finally the env var (bootstrap).
+let liveCookie: string | null = null;
+// Bumped whenever we auto-refresh, so callers can surface a "refreshed" note.
+let refreshCount = 0;
+
+/** How many times the Grint session has been auto-refreshed this instance. */
+export function grintRefreshCount(): number {
+  return refreshCount;
+}
+
+async function loadStoredCookie(): Promise<string | null> {
+  const [row] = await db
+    .select({ value: appConfig.value })
+    .from(appConfig)
+    .where(eq(appConfig.key, COOKIE_KEY))
+    .limit(1);
+  return row?.value ?? process.env.GRINT_COOKIE ?? null;
+}
+
+async function currentCookie(): Promise<string> {
+  if (liveCookie) return liveCookie;
+  const stored = await loadStoredCookie();
+  if (!stored) {
     throw new Error(
-      "GRINT_COOKIE is not set. Add the logged-in thegrint.com Cookie header to .env.local.",
+      "No Grint session available. Set GRINT_COOKIE, or GRINT_EMAIL + GRINT_PASSWORD for auto-login.",
     );
   }
+  liveCookie = stored;
+  return stored;
+}
+
+/**
+ * Log into thegrint.com with GRINT_EMAIL / GRINT_PASSWORD and return a fresh
+ * Cookie header string. The login form is a plain POST (no CSRF/captcha); a
+ * successful login 302-redirects to /dashboard and sets a PHPSESSID cookie.
+ */
+export async function grintLogin(): Promise<string> {
+  const email = process.env.GRINT_EMAIL;
+  const password = process.env.GRINT_PASSWORD;
+  if (!email || !password) {
+    throw new Error(
+      "Grint session is stale and GRINT_EMAIL / GRINT_PASSWORD are not set for auto-login.",
+    );
+  }
+
+  const res = await fetch(`${BASE}/login`, {
+    method: "POST",
+    redirect: "manual",
+    headers: {
+      "User-Agent": USER_AGENT,
+      "Content-Type": "application/x-www-form-urlencoded",
+      Origin: BASE,
+      Referer: `${BASE}/login`,
+    },
+    body: new URLSearchParams({ username: email, password, redirect: "" }).toString(),
+  });
+
+  const setCookies = res.headers.getSetCookie?.() ?? [];
+  const pairs = setCookies
+    .map((c) => c.split(";")[0].trim())
+    .filter((p) => p.includes("=") && !/=(deleted|;?\s*$)/i.test(p));
+  const cookie = pairs.join("; ");
+
+  const location = res.headers.get("location") ?? "";
+  const ok = res.status >= 300 && res.status < 400 && !/\/login/.test(location);
+  if (!ok || !/PHPSESSID=/.test(cookie)) {
+    throw new Error("Grint login failed — check GRINT_EMAIL / GRINT_PASSWORD.");
+  }
   return cookie;
+}
+
+async function refreshCookie(): Promise<string> {
+  const cookie = await grintLogin();
+  await db
+    .insert(appConfig)
+    .values({ key: COOKIE_KEY, value: cookie })
+    .onConflictDoUpdate({ target: appConfig.key, set: { value: cookie } });
+  liveCookie = cookie;
+  refreshCount += 1;
+  return cookie;
+}
+
+function isLoginResponse(res: Response, text: string): boolean {
+  if (looksLikeLogin(text)) return true;
+  const loc = res.headers.get("location") ?? "";
+  return res.status >= 300 && res.status < 400 && /\/login/.test(loc);
+}
+
+/**
+ * Perform a Grint request with the current cookie; if the response is the login
+ * page (session stale), auto-refresh via grintLogin() and retry ONCE. `build`
+ * is called with the cookie so the retry uses the fresh one.
+ */
+async function grintFetch(
+  build: (cookie: string) => { url: string; init?: RequestInit },
+): Promise<{ res: Response; text: string }> {
+  const cookie = await currentCookie();
+  const first = build(cookie);
+  let res = await fetch(first.url, first.init);
+  let text = await res.text();
+
+  if (isLoginResponse(res, text)) {
+    const fresh = await refreshCookie();
+    const retry = build(fresh);
+    res = await fetch(retry.url, retry.init);
+    text = await res.text();
+  }
+  return { res, text };
+}
+
+/** Self-healing GET for other modules (auto-refreshes the Grint session). */
+export async function grintGet(
+  url: string,
+  extra: Record<string, string> = {},
+): Promise<{ res: Response; text: string }> {
+  return grintFetch((cookie) => ({ url, init: { headers: headers(cookie, extra) } }));
 }
 
 function headers(cookie: string, extra: Record<string, string> = {}) {
@@ -128,7 +239,6 @@ export async function fetchRounds(
   userId: number | string,
   opts: FetchRoundsOptions = {},
 ): Promise<GrintRound[]> {
-  const cookie = requireCookie();
   const companyId = opts.companyId ?? 7;
   const typeScore = opts.typeScore ?? 0;
   const maxPages = opts.maxPages ?? 40;
@@ -145,13 +255,15 @@ export async function fetchRounds(
       handicap_company_id: String(companyId),
     }).toString();
 
-    const res = await fetch(`${BASE}/score/listMoreScores`, {
-      method: "POST",
-      headers: headers(cookie, { "Content-Type": "application/x-www-form-urlencoded" }),
-      body,
-    });
+    const { res, text: html } = await grintFetch((cookie) => ({
+      url: `${BASE}/score/listMoreScores`,
+      init: {
+        method: "POST",
+        headers: headers(cookie, { "Content-Type": "application/x-www-form-urlencoded" }),
+        body,
+      },
+    }));
     if (!res.ok) throw new Error(`listMoreScores wave ${wave}: HTTP ${res.status}`);
-    const html = await res.text();
     if (looksLikeLogin(html)) {
       throw new Error("GRINT_COOKIE is expired / not logged in.");
     }
@@ -202,13 +314,11 @@ export interface CourseMatch {
  * param is silently ignored and returns a default list.
  */
 export async function resolveCourse(query: string): Promise<CourseMatch[]> {
-  const cookie = requireCookie();
-  const res = await fetch(
-    `${BASE}/score/ajax_course/${encodeURIComponent(query)}`,
-    { headers: headers(cookie) },
-  );
+  const { res, text: html } = await grintFetch((cookie) => ({
+    url: `${BASE}/score/ajax_course/${encodeURIComponent(query)}`,
+    init: { headers: headers(cookie) },
+  }));
   if (!res.ok) throw new Error(`ajax_course: HTTP ${res.status}`);
-  const html = await res.text();
   const out: CourseMatch[] = [];
   for (const m of html.matchAll(
     /course-id="(\d+)"\s+course-name="([^"]*)"(?:\s+course-url="([^"]*)")?/g,
@@ -230,10 +340,11 @@ export interface CourseTee {
  * blank (e.g. ladies-only combos) are dropped.
  */
 export async function listCourseTees(courseId: number | string): Promise<CourseTee[]> {
-  const cookie = requireCookie();
-  const res = await fetch(`${BASE}/score/ajax_tees/${courseId}`, { headers: headers(cookie) });
+  const { res, text: html } = await grintFetch((cookie) => ({
+    url: `${BASE}/score/ajax_tees/${courseId}`,
+    init: { headers: headers(cookie) },
+  }));
   if (!res.ok) throw new Error(`ajax_tees: HTTP ${res.status}`);
-  const html = await res.text();
   const out: CourseTee[] = [];
   for (const m of html.matchAll(/<option[^>]*value="([^"]+)"[^>]*>/g)) {
     const opt = m[0];
@@ -256,10 +367,11 @@ export async function fetchHoleScores(
   scoreId: number | string,
   holes: 9 | 18 = 18,
 ): Promise<{ holeNumber: number; gross: number }[]> {
-  const cookie = requireCookie();
   const url = `${BASE}/score/edit_score/${scoreId}${holes === 9 ? "/9" : ""}?handicap_company_id=7`;
-  const res = await fetch(url, { headers: headers(cookie) });
-  const html = await res.text();
+  const { res, text: html } = await grintFetch((cookie) => ({
+    url,
+    init: { headers: headers(cookie) },
+  }));
   if (!res.ok || /500-DB/.test(html)) {
     throw new Error(`could not load scorecard for ${scoreId} (HTTP ${res.status})`);
   }
@@ -308,14 +420,13 @@ export async function fetchCourseData(
   round: string = "18",
   contextUserId: number = CONTEXT_GRINT_USER,
 ): Promise<CourseData> {
-  const cookie = requireCookie();
   const num = (v: unknown) =>
     v != null && /^-?[\d.]+$/.test(String(v)) ? Number(v) : null;
 
   // rating/slope (scope-correct)
-  const hdcpRes = await fetch(
-    `${BASE}/ajax/get_course_hdcp/${contextUserId}/${courseId}/0/${round}/0`,
-    {
+  const { res: hdcpRes, text: hdcpText } = await grintFetch((cookie) => ({
+    url: `${BASE}/ajax/get_course_hdcp/${contextUserId}/${courseId}/0/${round}/0`,
+    init: {
       method: "POST",
       headers: headers(cookie, { "Content-Type": "application/x-www-form-urlencoded" }),
       body: new URLSearchParams({
@@ -327,25 +438,28 @@ export async function fetchCourseData(
         handicap_company_id: "7",
       }).toString(),
     },
-  );
+  }));
   if (!hdcpRes.ok) throw new Error(`get_course_hdcp: HTTP ${hdcpRes.status}`);
-  const hd = JSON.parse(await hdcpRes.text());
+  const hd = JSON.parse(hdcpText);
 
   // par + per-hole par/stroke-index
-  const res = await fetch(`${BASE}/ajax/get_course_data/0/0/0`, {
-    method: "POST",
-    headers: headers(cookie, { "Content-Type": "application/x-www-form-urlencoded" }),
-    body: new URLSearchParams({
-      course_id: String(courseId),
-      tee,
-      user_id: String(contextUserId),
-      round,
-      score_id: "0",
-      handicap_company_id: "7",
-    }).toString(),
-  });
+  const { res, text: courseText } = await grintFetch((cookie) => ({
+    url: `${BASE}/ajax/get_course_data/0/0/0`,
+    init: {
+      method: "POST",
+      headers: headers(cookie, { "Content-Type": "application/x-www-form-urlencoded" }),
+      body: new URLSearchParams({
+        course_id: String(courseId),
+        tee,
+        user_id: String(contextUserId),
+        round,
+        score_id: "0",
+        handicap_company_id: "7",
+      }).toString(),
+    },
+  }));
   if (!res.ok) throw new Error(`get_course_data: HTTP ${res.status}`);
-  const j = JSON.parse(await res.text());
+  const j = JSON.parse(courseText);
 
   // Per-hole cells carry the hole number in their class ("… gray-text 7">).
   const byHole = (frag: unknown) => {
@@ -394,25 +508,26 @@ const num = (v?: string) => (v && /^-?[\d.]+$/.test(v) ? Number(v) : undefined);
  * clean JSON, e.g. {"rating":"68.50","slope":"123","courseHdcp":"21.0",...}.
  */
 async function getCourseHdcp(
-  cookie: string,
   p: { userId: string; courseId: string; round: string; scoreId: string; tee: string },
 ): Promise<Partial<ScoreDetail>> {
-  const url = `${BASE}/ajax/get_course_hdcp/${p.userId}/${p.courseId}/0/${p.round}/${p.scoreId}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: headers(cookie, { "Content-Type": "application/x-www-form-urlencoded" }),
-    body: new URLSearchParams({
-      user_id: p.userId,
-      course_id: p.courseId,
-      tee: p.tee,
-      round: p.round,
-      score_id: p.scoreId,
-      handicap_company_id: "7",
-    }).toString(),
-  });
+  const { res, text } = await grintFetch((cookie) => ({
+    url: `${BASE}/ajax/get_course_hdcp/${p.userId}/${p.courseId}/0/${p.round}/${p.scoreId}`,
+    init: {
+      method: "POST",
+      headers: headers(cookie, { "Content-Type": "application/x-www-form-urlencoded" }),
+      body: new URLSearchParams({
+        user_id: p.userId,
+        course_id: p.courseId,
+        tee: p.tee,
+        round: p.round,
+        score_id: p.scoreId,
+        handicap_company_id: "7",
+      }).toString(),
+    },
+  }));
   if (!res.ok) return {};
   try {
-    const j = JSON.parse(await res.text());
+    const j = JSON.parse(text);
     return {
       rating: num(j.rating),
       slope: num(j.slope),
@@ -435,7 +550,6 @@ export async function fetchScoreDetail(
   scoreId: string | number,
   opts: { holes?: 9 | 18 } = {},
 ): Promise<ScoreDetail> {
-  const cookie = requireCookie();
   const id = String(scoreId);
 
   const attempts: (9 | 18)[] = opts.holes ? [opts.holes] : [18, 9];
@@ -443,8 +557,11 @@ export async function fetchScoreDetail(
   let loaded = false;
   for (const holes of attempts) {
     const url = `${BASE}/score/edit_score/${id}${holes === 9 ? "/9" : ""}?handicap_company_id=7`;
-    const res = await fetch(url, { headers: headers(cookie) });
-    html = await res.text();
+    const { res, text } = await grintFetch((cookie) => ({
+      url,
+      init: { headers: headers(cookie) },
+    }));
+    html = text;
     if (res.ok && !/500-DB/.test(html)) {
       loaded = true;
       break;
@@ -476,7 +593,7 @@ export async function fetchScoreDetail(
   if (detail.userId && detail.courseId && detail.round && detail.tee) {
     Object.assign(
       detail,
-      await getCourseHdcp(cookie, {
+      await getCourseHdcp({
         userId: detail.userId,
         courseId: detail.courseId,
         round: detail.round,

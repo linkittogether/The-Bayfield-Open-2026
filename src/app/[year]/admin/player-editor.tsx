@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, Lock, Pencil, User, X } from "lucide-react";
+import { Check, Lock, Mail, Pencil, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ interface PlayerLite {
   photoUrl: string | null;
   handicap: number;
   hasPin: boolean;
+  email: string | null;
 }
 
 export function PlayerEditor({ players }: { players: PlayerLite[] }) {
@@ -23,6 +24,7 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editHcp, setEditHcp] = useState(0);
   const [editPin, setEditPin] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -30,6 +32,7 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
     setEditingId(p.id);
     setEditHcp(p.handicap);
     setEditPin("");
+    setEditEmail(p.email ?? "");
     setMsg(null);
   }
 
@@ -42,7 +45,10 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
     setMsg(null);
     startTransition(async () => {
       try {
-        const update: { handicap?: number; pin?: string } = { handicap: editHcp };
+        const update: { handicap?: number; pin?: string; email?: string } = {
+          handicap: editHcp,
+          email: editEmail.trim(),
+        };
         if (editPin) {
           if (!/^\d{4}$/.test(editPin)) {
             setMsg("PIN must be 4 digits");
@@ -69,7 +75,7 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
         <User size={16} /> Player Management
       </h3>
       <p className="text-xs text-muted-foreground mb-3">
-        Edit handicaps and reset PINs. Players use their PIN to log in and submit their own scores.
+        Assign each player&apos;s Google email — that&apos;s how they sign in and submit their own scores. Handicaps editable here too.
       </p>
       <div className="space-y-2">
         {players.map((p) => (
@@ -94,6 +100,16 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                   >
                     <Lock size={10} />
                     {p.hasPin ? "PIN set" : "No PIN"}
+                  </span>
+                  <span>·</span>
+                  <span
+                    className={cn(
+                      "flex items-center gap-0.5",
+                      p.email ? "text-green-600" : "text-amber-600",
+                    )}
+                  >
+                    <Mail size={10} />
+                    {p.email ? "Email set" : "No email"}
                   </span>
                 </div>
               </div>
@@ -137,6 +153,20 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                       +
                     </button>
                   </div>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">
+                    Google email (used to sign in — leave blank to clear)
+                  </Label>
+                  <Input
+                    type="email"
+                    inputMode="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="name@gmail.com"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs mb-1 block">Set / Change PIN (leave blank to keep current)</Label>

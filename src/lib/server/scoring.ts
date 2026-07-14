@@ -22,6 +22,10 @@ export interface PlayerScore {
   cumulativeGross: number;
   /** Sum of computable segment nets (null if none computable yet). Fractional. */
   cumulativeNet: number | null;
+  /** Net summed per tournament day (e.g. 1 → Friday, 2 → Saturday). */
+  netByDay: Map<number, number>;
+  /** Net per individual segment (segmentId → net), for round-by-round breakdowns. */
+  netBySegment: Map<number, number>;
   segmentsScored: number;
   /** True when every scored segment had the course data needed to compute net. */
   netComplete: boolean;
@@ -96,6 +100,8 @@ export async function getSeasonScoring(seasonId: number): Promise<SeasonScoring>
         day1Net: null,
         cumulativeGross: 0,
         cumulativeNet: null,
+        netByDay: new Map(),
+        netBySegment: new Map(),
         segmentsScored: 0,
         netComplete: true,
       };
@@ -104,7 +110,11 @@ export async function getSeasonScoring(seasonId: number): Promise<SeasonScoring>
     ps.cumulativeGross += sc.gross;
     ps.segmentsScored += 1;
     if (net == null) ps.netComplete = false;
-    else ps.cumulativeNet = (ps.cumulativeNet ?? 0) + net;
+    else {
+      ps.cumulativeNet = (ps.cumulativeNet ?? 0) + net;
+      ps.netByDay.set(seg.day, (ps.netByDay.get(seg.day) ?? 0) + net);
+      ps.netBySegment.set(sc.segmentId, net);
+    }
     if (day1Seg && sc.segmentId === day1Seg.id) {
       ps.day1Gross = sc.gross;
       ps.day1Net = net;

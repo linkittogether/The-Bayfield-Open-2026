@@ -68,14 +68,22 @@ export interface Day2PairStanding {
   player1Handicap: number;
   player1Photo: string | null;
   player1Net: number | null;
+  player1Day1Net: number | null;
+  player1Day2Nets: (number | null)[];
   player2Id: number;
   player2Name: string;
   player2Handicap: number;
   player2Photo: string | null;
   player2Net: number | null;
+  player2Day1Net: number | null;
+  player2Day2Nets: (number | null)[];
+  /** Column headers for the Day-2 segment nets (aligned to the *Day2Nets arrays). */
+  day2SegLabels: string[];
   /** Sum of both partners' cumulative nets (Fri + Sat). Null until both have nets. */
   combinedNet: number | null;
   segmentsScored: number;
+  /** True when BOTH partners have a score for every Day 1 + Day 2 stroke segment. */
+  complete: boolean;
 }
 
 /**
@@ -90,6 +98,18 @@ export async function getDay2Leaderboard(
     getDay2Teams(seasonId),
     getSeasonScoring(seasonId),
   ]);
+
+  // Stroke-play segments that count toward Day 2 standings (Day 1 + Day 2).
+  // Day-3 match play has a segment for stroke allocation but never fills
+  // segment_scores, so exclude it from the "all scored" check.
+  const strokeSegCount = scoring.segments.filter((s) => s.day <= 2).length;
+
+  // Day-2 segments become breakdown columns — the 18-hole round first, then the
+  // back-9 (play order), labelled by hole count.
+  const day2Segs = scoring.segments
+    .filter((s) => s.day === 2)
+    .sort((a, b) => b.holes - a.holes);
+  const day2SegLabels = day2Segs.map((s) => `${s.holes}h`);
 
   const rows: Day2PairStanding[] = pairs.map((t) => {
     const s1 = scoring.byPlayer.get(t.player1Id);
@@ -106,13 +126,22 @@ export async function getDay2Leaderboard(
       player1Handicap: s1?.index ?? t.player1Handicap,
       player1Photo: t.player1Photo,
       player1Net: n1,
+      player1Day1Net: s1?.netByDay.get(1) ?? null,
+      player1Day2Nets: day2Segs.map((seg) => s1?.netBySegment.get(seg.id) ?? null),
       player2Id: t.player2Id,
       player2Name: t.player2Name,
       player2Handicap: s2?.index ?? t.player2Handicap,
       player2Photo: t.player2Photo,
       player2Net: n2,
+      player2Day1Net: s2?.netByDay.get(1) ?? null,
+      player2Day2Nets: day2Segs.map((seg) => s2?.netBySegment.get(seg.id) ?? null),
+      day2SegLabels,
       combinedNet,
       segmentsScored: (s1?.segmentsScored ?? 0) + (s2?.segmentsScored ?? 0),
+      complete:
+        strokeSegCount > 0 &&
+        (s1?.segmentsScored ?? 0) >= strokeSegCount &&
+        (s2?.segmentsScored ?? 0) >= strokeSegCount,
     };
   });
 

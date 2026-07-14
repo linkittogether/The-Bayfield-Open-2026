@@ -23,6 +23,8 @@ const updatePlayerSchema = z
     handicap: z.coerce.number().min(0).optional(),
     pin: z.string().regex(PIN_PATTERN).optional(),
     photoUrl: z.string().nullable().optional(),
+    // Google SSO email. Empty string clears it.
+    email: z.union([z.email(), z.literal("")]).optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "At least one field required");
 
@@ -31,6 +33,7 @@ const playerListColumns = {
   name: players.name,
   photoUrl: players.photoUrl,
   handicap: players.handicap,
+  email: players.email,
   createdAt: players.createdAt,
   hasPin: sql<boolean>`(${players.pinHash} IS NOT NULL AND ${players.pinHash} <> '')`.as(
     "has_pin",
@@ -124,6 +127,8 @@ export async function updatePlayer(
   if (data.handicap !== undefined) update.handicap = data.handicap;
   if (data.photoUrl !== undefined) update.photoUrl = data.photoUrl;
   if (data.pin !== undefined) update.pinHash = await bcrypt.hash(data.pin, 12);
+  if (data.email !== undefined)
+    update.email = data.email ? data.email.toLowerCase() : null;
 
   const [row] = await db
     .update(players)
@@ -134,6 +139,7 @@ export async function updatePlayer(
       name: players.name,
       photoUrl: players.photoUrl,
       handicap: players.handicap,
+      email: players.email,
       createdAt: players.createdAt,
     });
   if (!row) throw new Error("Player not found");

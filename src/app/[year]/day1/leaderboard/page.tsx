@@ -2,7 +2,9 @@ import Link from "next/link";
 import { ClipboardList, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { BulkGrintPull } from "@/components/bulk-grint-pull";
 import { PlayerAvatar } from "@/components/player-avatar";
+import { CompleteDay1 } from "./complete-day1";
 import { cn } from "@/lib/utils";
 import { formatNet, ordinal } from "@/lib/format";
 import { getDay1Leaderboard } from "@/lib/server/day1";
@@ -12,6 +14,8 @@ import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 
 export const metadata = { title: "Day 1 Leaderboard" };
+// The admin bulk Grint pull runs from this route; give it headroom.
+export const maxDuration = 60;
 
 const medals = ["🥇", "🥈", "🥉"];
 
@@ -31,6 +35,7 @@ export default async function Day1LeaderboardPage({
   ]);
 
   const userId = user?.kind === "player" ? user.player.id : null;
+  const isAdmin = user?.kind === "admin";
   const scoredIds = new Set(lb.map((e) => e.id));
   const notScored = players.filter((p) => !scoredIds.has(p.id));
 
@@ -43,6 +48,12 @@ export default async function Day1LeaderboardPage({
               <ClipboardList size={16} /> Enter Score
             </Link>
           </Button>
+        </div>
+      )}
+
+      {!readOnly && isAdmin && (
+        <div className="mb-5">
+          <BulkGrintPull day={1} />
         </div>
       )}
 
@@ -67,7 +78,9 @@ export default async function Day1LeaderboardPage({
                     ? "bg-primary/10 border-primary ring-2 ring-primary/30"
                     : i < 3
                       ? "bg-white border-primary/30"
-                      : i === 9
+                      : // 10th place = the captain/pick cutoff — only meaningful
+                        // once scoring is done and picking is about to start.
+                        i === 9 && state?.day1Complete
                         ? "bg-white border-secondary ring-1 ring-secondary"
                         : "bg-white border-border",
                 )}
@@ -117,15 +130,19 @@ export default async function Day1LeaderboardPage({
         </div>
       )}
 
-      {!readOnly && lb.length >= 20 && !state?.day1PickingComplete && (
+      {!readOnly && isAdmin && !state?.day1Complete && lb.length > 0 && (
+        <CompleteDay1 scored={lb.length} total={players.length} />
+      )}
+
+      {!readOnly && state?.day1Complete && !state?.day1PickingComplete && (
         <div className="mt-5 bg-accent rounded-2xl p-4 border border-secondary/30">
-          <p className="font-semibold text-sm mb-1">Ready to pick partners!</p>
+          <p className="font-semibold text-sm mb-1">Partner picking is open</p>
           <p className="text-xs text-muted-foreground mb-3">
-            All 20 players have scores. Start the Day 2 partner selection.
+            Day 1 is closed — 10th place picks first, down to 1st.
           </p>
           <Button asChild className="w-full bg-secondary text-white hover:bg-secondary/90">
             <Link href={`/${yr}/day1/picks`}>
-              <Users size={16} /> Start Partner Pick
+              <Users size={16} /> Go to Partner Pick
             </Link>
           </Button>
         </div>

@@ -1,11 +1,12 @@
-import { ChevronRight, Lock, Trophy, Users } from "lucide-react";
+import { Lock, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { formatNet, ordinal } from "@/lib/format";
 import { getDay1PicksOverview } from "@/lib/server/day1";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
-import { PickButton } from "./pick-button";
+import { PickList } from "./pick-list";
+import { UndoPickButton } from "./undo-pick-button";
 
 export const metadata = { title: "Partner Selection" };
 
@@ -27,6 +28,20 @@ export default async function Day1PicksPage({
   const canPickNow =
     !readOnly && !!data.nextPicker && (isAdmin || userId === data.nextPicker.id);
 
+  // Most recent pick = first team (overview orders by asc pickOrder, and picking
+  // descends from rank 10). Used by the admin sequential-undo control.
+  const latestTeam = data.teams[0];
+  const latestPicker = latestTeam
+    ? data.leaderboard.find((p) => p.id === latestTeam.player1Id)
+    : undefined;
+  const latestPicked = latestTeam
+    ? data.leaderboard.find((p) => p.id === latestTeam.player2Id)
+    : undefined;
+  const lastPickLabel = latestTeam
+    ? `${latestPicker?.name}'s pick of ${latestPicked?.name}`
+    : undefined;
+  const showUndo = !readOnly && isAdmin && data.teams.length > 0;
+
   if (data.pickingComplete) {
     return (
       <AppShell title="Partner Selection" showBack backTo={`/${yr}/day1/leaderboard`} year={yr}>
@@ -36,9 +51,12 @@ export default async function Day1PicksPage({
           <p className="text-sm text-green-700 mt-1">All partners have been selected for Day 2.</p>
         </div>
 
-        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-          Day 2 Teams
-        </h3>
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            Day 2 Teams
+          </h3>
+          {showUndo && <UndoPickButton lastPickLabel={lastPickLabel} />}
+        </div>
         <div className="space-y-2">
           {data.teams.map((team) => {
             const p1 = data.leaderboard.find((p) => p.id === team.player1Id);
@@ -105,33 +123,30 @@ export default async function Day1PicksPage({
           )}
 
           <h3 className="text-sm font-semibold mb-2">Available Players (ranks 11–20)</h3>
-          <div className="space-y-2">
-            {data.available.map((p) => (
-              <PickButton
-                key={p.id}
-                pickerId={data.nextPicker!.id}
-                pickedId={p.id}
-                disabled={!canPickNow}
-              >
-                <PlayerAvatar name={p.name} photoUrl={p.photoUrl} size="sm" />
-                <div className="flex-1 text-left min-w-0">
-                  <p className="font-semibold text-sm truncate">{p.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Rank #{p.rank} · Net {formatNet(p.netScore)} · HCP {p.handicap}
-                  </p>
-                </div>
-                <ChevronRight size={16} className="text-muted-foreground" />
-              </PickButton>
-            ))}
-          </div>
+          <PickList
+            pickerId={data.nextPicker.id}
+            pickerName={data.nextPicker.name}
+            canPick={canPickNow}
+            candidates={data.available.map((p) => ({
+              id: p.id,
+              name: p.name,
+              photoUrl: p.photoUrl,
+              rank: p.rank,
+              netScore: p.netScore,
+              handicap: p.handicap,
+            }))}
+          />
         </div>
       )}
 
       {data.teams.length > 0 && (
         <>
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 mt-4">
-            Teams So Far
-          </h3>
+          <div className="flex items-center justify-between gap-2 mb-2 mt-4">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Teams So Far
+            </h3>
+            {showUndo && <UndoPickButton lastPickLabel={lastPickLabel} />}
+          </div>
           <div className="space-y-2">
             {data.teams.map((team) => {
               const p1 = data.leaderboard.find((p) => p.id === team.player1Id);

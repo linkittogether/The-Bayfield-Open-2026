@@ -8,7 +8,6 @@ import { getCurrentSeason } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { AdminManager } from "./admin-manager";
 import { PlayerEditor } from "./player-editor";
-import { ResetButton } from "./reset-button";
 import { StatusRows } from "./status-rows";
 
 export const metadata = { title: "Admin Panel" };
@@ -65,7 +64,7 @@ export default async function AdminPage({
         <div className="flex items-center gap-2 bg-primary/10 rounded-xl px-4 py-3">
           <Shield size={18} className="text-primary" />
           <span className="text-sm font-semibold text-primary">
-            Logged in as admin: {user.admin.username}
+            Logged in as admin: {user.admin.email ?? user.admin.username}
           </span>
         </div>
 
@@ -97,12 +96,11 @@ export default async function AdminPage({
             photoUrl: p.photoUrl,
             handicap: p.handicap,
             hasPin: p.hasPin,
+            email: p.email,
           }))}
         />
 
         <AdminManager admins={admins.map((a) => ({ id: a.id, username: a.username }))} />
-
-        <ResetButton seasonId={season.id} />
       </div>
     </AppShell>
   );

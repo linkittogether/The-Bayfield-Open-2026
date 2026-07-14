@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -18,14 +18,19 @@ export function GrintPullButton({
   segmentId,
   playerId,
   onPulled,
+  autoPull = false,
 }: {
   segmentId: number;
   playerId: number;
   onPulled: (gross: number) => void;
+  // Kick off the pull automatically once on mount (e.g. arriving from the
+  // "Pull from Grint" home-screen tile).
+  autoPull?: boolean;
 }) {
   const [pulling, start] = useTransition();
   const [msg, setMsg] = useState<{ tone: "ok" | "warn" | "err"; text: string } | null>(null);
   const [choices, setChoices] = useState<GrintPreview["candidates"]>([]);
+  const autoPulled = useRef(false);
 
   function describe(c: GrintPreview["candidates"][number]) {
     return `${c.gross} — ${c.teeLabel}, ${c.displayDate}${c.slope ? ` (slope ${c.slope})` : ""}`;
@@ -70,6 +75,15 @@ export function GrintPullButton({
       }
     });
   }
+
+  useEffect(() => {
+    if (autoPull && !autoPulled.current) {
+      autoPulled.current = true;
+      pull();
+    }
+    // pull is stable enough for a one-shot; ref guards against re-fire.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPull]);
 
   return (
     <div className="space-y-2">

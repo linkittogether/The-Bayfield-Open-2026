@@ -1,6 +1,7 @@
 import { eq, isNotNull } from "drizzle-orm";
 import { db } from "@/db";
 import { players } from "@/db/schema";
+import { grintGet } from "./grint-rounds";
 
 /**
  * Pulls player handicaps from TheGrint by fetching each player's profile page
@@ -16,9 +17,6 @@ import { players } from "@/db/schema";
 
 const profileUrl = (grintId: number) =>
   `https://thegrint.com/profile/index/${grintId}`;
-
-const USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Safari/605.1.15";
 
 export type HandicapParse =
   | { kind: "exact"; value: number; raw: string }
@@ -68,13 +66,6 @@ export interface RefreshResult {
 }
 
 export async function refreshHandicaps(): Promise<RefreshResult> {
-  const cookie = process.env.GRINT_COOKIE;
-  if (!cookie) {
-    throw new Error(
-      "GRINT_COOKIE is not set. Add the logged-in thegrint.com Cookie header to .env.local.",
-    );
-  }
-
   const rows = await db
     .select({ id: players.id, name: players.name, grintId: players.grintId })
     .from(players)
@@ -88,14 +79,12 @@ export async function refreshHandicaps(): Promise<RefreshResult> {
 
     let html: string;
     try {
-      const res = await fetch(profileUrl(grintId), {
-        headers: { "User-Agent": USER_AGENT, Cookie: cookie },
-      });
+      const { res, text } = await grintGet(profileUrl(grintId));
       if (!res.ok) {
         result.skipped.push({ ...base, reason: `HTTP ${res.status}` });
         continue;
       }
-      html = await res.text();
+      html = text;
     } catch (e) {
       result.skipped.push({
         ...base,

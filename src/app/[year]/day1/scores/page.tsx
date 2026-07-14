@@ -5,17 +5,23 @@ import { Button } from "@/components/ui/button";
 import { getDay1ScoreEntry, getDay1Scores } from "@/lib/server/day1";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
+import { BulkGrintPull } from "@/components/bulk-grint-pull";
 import { ScoresForm } from "./scores-form";
 
 export const metadata = { title: "Day 1 — Enter Score" };
+// Bulk Grint pull fans out network calls per player; give it headroom.
+export const maxDuration = 60;
 
 export default async function Day1ScoresPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ year: string }>;
+  searchParams: Promise<{ pull?: string }>;
 }) {
   const { year } = await params;
   const yr = Number(year);
+  const { pull } = await searchParams;
   const { viewed: season, readOnly } = await getSeasonView(yr);
   const user = await getCurrentUser();
 
@@ -58,12 +64,18 @@ export default async function Day1ScoresPage({
 
   return (
     <AppShell title="Day 1 — Enter Score" showBack backTo={`/${yr}/day1/leaderboard`} year={yr}>
+      {isAdmin && (
+        <div className="mb-5">
+          <BulkGrintPull day={1} />
+        </div>
+      )}
       <ScoresForm
         players={entry.players}
         segment={entry.segment}
         submittedIds={submittedIds}
         lockedPlayerId={lockedPlayerId}
         isAdmin={isAdmin}
+        autoPull={pull === "1"}
       />
     </AppShell>
   );

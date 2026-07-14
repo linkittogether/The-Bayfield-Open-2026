@@ -13,6 +13,17 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
+// Small key/value store for runtime config that must persist across serverless
+// invocations (e.g. the auto-refreshed Grint session cookie).
+export const appConfig = pgTable("app_config", {
+  key: text().primaryKey(),
+  value: text().notNull(),
+  updatedAt: timestamp({ withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
 export const teamName = pgEnum("team_name", [
   "truffle_hogs",
   "mycelium_syndicate",
@@ -65,6 +76,8 @@ export const players = pgTable("players", {
     .default(0),
   grintId: integer().unique(),
   pinHash: text().notNull(),
+  // Google account email for SSO login; admin-assigned. Nullable until assigned.
+  email: text().unique(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp({ withTimezone: true })
     .notNull()
@@ -168,6 +181,8 @@ export const admins = pgTable("admins", {
   id: serial().primaryKey(),
   username: text().notNull().unique(),
   codeHash: text().notNull(),
+  // Google account email for SSO login. Nullable until assigned.
+  email: text().unique(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -1,16 +1,26 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { listPlayersByName } from "@/lib/server/players";
 import { getCurrentUser } from "@/lib/session";
-import { LoginForms } from "./login-forms";
+import { GoogleLoginButton } from "./google-login-button";
 
 export const metadata = { title: "Log in · Bayfield Open" };
 
-export default async function LoginPage() {
+const ERROR_MESSAGES: Record<string, string> = {
+  "not-registered":
+    "That Google account isn't registered for the Bayfield Open. Ask the tournament admin to add your email.",
+  oauth: "Sign-in didn't complete. Please try again.",
+};
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
   const user = await getCurrentUser();
   if (user) redirect("/");
 
-  const players = await listPlayersByName();
+  const { error } = await searchParams;
+  const errorMessage = error ? ERROR_MESSAGES[error] : null;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -35,7 +45,12 @@ export default async function LoginPage() {
       </header>
 
       <div className="flex-1 max-w-lg mx-auto w-full px-4 py-8">
-        <LoginForms players={players} />
+        {errorMessage && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
+        <GoogleLoginButton />
         <p className="text-center text-xs text-muted-foreground mt-6">
           No account? Ask the tournament admin to register you.
         </p>

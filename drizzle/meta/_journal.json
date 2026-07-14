@@ -71,6 +71,20 @@
       "when": 1783955487602,
       "tag": "0009_low_william_stryker",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783959299283,
+      "tag": "0010_curvy_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783993867870,
+      "tag": "0011_tough_owl",
+      "breakpoints": true
     }
   ]
 }

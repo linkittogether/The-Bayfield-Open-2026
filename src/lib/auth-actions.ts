@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { admins, players } from "@/db/schema";
 import { getSession } from "./session";
+import { createSupabaseServerClient } from "./supabase/server";
 
 const playerLoginSchema = z.object({
   playerId: z.coerce.number().int().positive(),
@@ -75,6 +76,15 @@ export async function adminLogin(formData: FormData): Promise<AuthResult> {
 }
 
 export async function logout() {
+  // Clear any lingering Supabase auth cookies (defensive — iron-session is the
+  // session of record, but a callback may have left Supabase cookies behind).
+  try {
+    const supabase = await createSupabaseServerClient();
+    await supabase.auth.signOut();
+  } catch {
+    // No Supabase session / cookies not writable here — safe to ignore.
+  }
+
   const session = await getSession();
   session.destroy();
   redirect("/login");

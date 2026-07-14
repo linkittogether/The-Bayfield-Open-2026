@@ -83,6 +83,16 @@
   h3 {
     font-family: var(--font-heading);
   }
+  /* Tailwind v4's reset drops the pointer cursor on buttons — restore it
+     globally for enabled buttons and button-role/anchor controls. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  label[for] {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 ::-webkit-scrollbar {

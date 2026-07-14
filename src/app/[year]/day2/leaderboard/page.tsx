@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ClipboardList, Trophy } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { BulkGrintPull } from "@/components/bulk-grint-pull";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { cn } from "@/lib/utils";
 import { formatNet, ordinal } from "@/lib/format";
@@ -11,6 +12,8 @@ import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 
 export const metadata = { title: "Day 2 Leaderboard" };
+// The admin bulk Grint pull runs from this route; give it headroom.
+export const maxDuration = 60;
 
 const medals = ["🥇", "🥈", "🥉"];
 
@@ -29,10 +32,39 @@ export default async function Day2LeaderboardPage({
   ]);
 
   const userId = user?.kind === "player" ? user.player.id : null;
-  const allDone = lb.length > 0 && lb.every((e) => e.combinedNet != null);
+  const isAdmin = user?.kind === "admin";
+  // Champions only once every pair has a score for every Day 1 + Day 2 round.
+  const allDone = lb.length > 0 && lb.every((e) => e.complete);
+  // Otherwise surface the provisional leader (needs at least one scored pair).
+  const leader = lb[0]?.combinedNet != null ? lb[0] : null;
 
   return (
     <AppShell title="Day 2 Leaderboard" year={yr}>
+      {leader && (
+        <div className="mb-5 bg-primary text-white rounded-2xl p-5 text-center">
+          <Trophy size={36} className="mx-auto mb-2 text-gold" />
+          <p className="font-bold text-xl font-heading">
+            {allDone ? "Pairs Champions!" : "Current Leader"}
+          </p>
+          <p className="text-green-200 text-sm mt-1">
+            {leader.player1Name} & {leader.player2Name} with {formatNet(leader.combinedNet)} net
+          </p>
+          {!allDone && (
+            <p className="text-green-200/80 text-xs mt-1">
+              Day 2 still in progress — not final
+            </p>
+          )}
+          {allDone && !readOnly && !state?.day2DraftComplete && (
+            <Button
+              asChild
+              className="mt-4 bg-white text-primary hover:bg-white/90 w-full"
+            >
+              <Link href={`/${yr}/day2/draft`}>Proceed to Day 3 Draft</Link>
+            </Button>
+          )}
+        </div>
+      )}
+
       {!readOnly && (
         <div className="mb-5">
           <Button asChild className="w-full h-11">
@@ -40,6 +72,12 @@ export default async function Day2LeaderboardPage({
               <ClipboardList size={16} /> Enter Score
             </Link>
           </Button>
+        </div>
+      )}
+
+      {!readOnly && isAdmin && (
+        <div className="mb-5">
+          <BulkGrintPull day={2} />
         </div>
       )}
 
@@ -107,14 +145,35 @@ export default async function Day2LeaderboardPage({
                   </div>
                 </div>
 
-                <div className="border-t border-border px-3 py-2 grid grid-cols-2 gap-2">
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground truncate">{entry.player1Name}</p>
-                    <p className="text-sm font-semibold">{formatNet(entry.player1Net)}</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground truncate">{entry.player2Name}</p>
-                    <p className="text-sm font-semibold">{formatNet(entry.player2Net)}</p>
+                <div className="border-t border-border px-3 py-2 overflow-x-auto">
+                  <div
+                    className="grid gap-x-2 gap-y-1 items-center text-xs min-w-max"
+                    style={{
+                      gridTemplateColumns: `minmax(4rem,1fr) repeat(${entry.day2SegLabels.length + 2}, 2.75rem)`,
+                    }}
+                  >
+                    <span />
+                    <span className="text-center text-[10px] uppercase tracking-wide text-muted-foreground">Day 1</span>
+                    {entry.day2SegLabels.map((lbl, k) => (
+                      <span key={`h${k}`} className="text-center text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {lbl}
+                      </span>
+                    ))}
+                    <span className="text-center text-[10px] uppercase tracking-wide text-muted-foreground">Total</span>
+
+                    <span className="font-medium truncate">{entry.player1Name}</span>
+                    <span className="text-center text-muted-foreground">{formatNet(entry.player1Day1Net)}</span>
+                    {entry.player1Day2Nets.map((n, k) => (
+                      <span key={`p1${k}`} className="text-center text-muted-foreground">{formatNet(n)}</span>
+                    ))}
+                    <span className="text-center font-semibold">{formatNet(entry.player1Net)}</span>
+
+                    <span className="font-medium truncate">{entry.player2Name}</span>
+                    <span className="text-center text-muted-foreground">{formatNet(entry.player2Day1Net)}</span>
+                    {entry.player2Day2Nets.map((n, k) => (
+                      <span key={`p2${k}`} className="text-center text-muted-foreground">{formatNet(n)}</span>
+                    ))}
+                    <span className="text-center font-semibold">{formatNet(entry.player2Net)}</span>
                   </div>
                 </div>
               </div>
@@ -123,23 +182,6 @@ export default async function Day2LeaderboardPage({
         </div>
       )}
 
-      {allDone && (
-        <div className="mt-5 bg-primary text-white rounded-2xl p-5 text-center">
-          <Trophy size={36} className="mx-auto mb-2 text-gold" />
-          <p className="font-bold text-xl font-heading">Pairs Champions!</p>
-          <p className="text-green-200 text-sm mt-1">
-            {lb[0].player1Name} & {lb[0].player2Name} with {formatNet(lb[0].combinedNet)} net
-          </p>
-          {!readOnly && !state?.day2DraftComplete && (
-            <Button
-              asChild
-              className="mt-4 bg-white text-primary hover:bg-white/90 w-full"
-            >
-              <Link href={`/${yr}/day2/draft`}>Proceed to Day 3 Draft</Link>
-            </Button>
-          )}
-        </div>
-      )}
     </AppShell>
   );
 }

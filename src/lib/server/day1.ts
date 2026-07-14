@@ -243,3 +243,40 @@ export async function completeDay1() {
     .where(eq(seasons.id, seasonId));
   return { ok: true };
 }
+
+/**
+ * Admin: undo the single MOST RECENT partner pick. Picking descends from rank 10
+ * to 1, so the latest pick is the team with the smallest pickOrder. Reopens that
+ * picker's turn. Call repeatedly to walk back further (sequential undo).
+ */
+export async function undoLastDay1Pick() {
+  await requireAdmin();
+  const seasonId = await getCurrentSeasonId();
+  return db.transaction(async (tx) => {
+    const [last] = await tx
+      .select()
+      .from(day2Teams)
+      .where(eq(day2Teams.seasonId, seasonId))
+      .orderBy(asc(day2Teams.pickOrder)) // smallest pickOrder = most recent pick
+      .limit(1);
+    if (!last) throw new Error("No picks to undo.");
+
+    await tx.delete(day2Teams).where(eq(day2Teams.id, last.id));
+
+    const remaining = await tx
+      .select({ id: day2Teams.id })
+      .from(day2Teams)
+      .where(eq(day2Teams.seasonId, seasonId));
+
+    await tx
+      .update(seasons)
+      .set({
+        nextPickerRank: last.pickOrder, // that picker is back on the clock
+        day1PickingComplete: false,
+        day1PickingStarted: remaining.length > 0,
+      })
+      .where(eq(seasons.id, seasonId));
+
+    return { undonePickOrder: last.pickOrder };
+  });
+}

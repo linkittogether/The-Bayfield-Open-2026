@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, LogIn } from "lucide-react";
+import { LogIn } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
 import { getCurrentSeason, listSeasons } from "@/lib/server/seasons";
 import { AuthButton } from "./auth-button";
@@ -10,19 +10,15 @@ import { SeasonSelector } from "./season-selector";
 interface AppShellProps {
   children: React.ReactNode;
   title?: string;
+  /** @deprecated No longer rendered — the logo/title link home instead. Kept so existing callers still compile. */
   showBack?: boolean;
+  /** @deprecated No longer rendered. */
   backTo?: string;
   /** The season year this page is scoped to (from the /[year] path segment). */
   year: number;
 }
 
-export async function AppShell({
-  children,
-  title,
-  showBack,
-  backTo,
-  year,
-}: AppShellProps) {
+export async function AppShell({ children, title, year }: AppShellProps) {
   const [user, seasonList, currentSeason] = await Promise.all([
     getCurrentUser(),
     listSeasons(),
@@ -33,29 +29,25 @@ export async function AppShell({
     <div className="min-h-screen flex flex-col bg-background">
       <header className="bg-primary text-white sticky top-0 z-50 shadow-lg">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
-          {showBack && (
-            <Link
-              href={backTo || `/${year}`}
-              className="p-1 rounded-full hover:bg-white/20 transition-colors"
-            >
-              <ArrowLeft size={20} />
-            </Link>
-          )}
-
-          <Image
-            src="/logo.png"
-            alt="Bayfield Open"
-            width={44}
-            height={44}
-            className="h-11 w-11 object-contain flex-shrink-0"
-            style={{ filter: "invert(1)" }}
-            priority
-          />
+          <Link href={`/${year}`} className="flex-shrink-0" aria-label="Go to home">
+            <Image
+              src="/logo.png"
+              alt="Bayfield Open"
+              width={44}
+              height={44}
+              className="h-11 w-11 object-contain"
+              style={{ filter: "invert(1)" }}
+              priority
+            />
+          </Link>
 
           <div className="flex-1 min-w-0">
-            <div className="text-xs uppercase tracking-widest text-green-200 font-medium">
+            <Link
+              href={`/${year}`}
+              className="text-xs uppercase tracking-widest text-green-200 font-medium hover:text-white transition-colors"
+            >
               The Bayfield Open
-            </div>
+            </Link>
             {title && (
               <h1 className="text-lg font-bold truncate font-heading">
                 {title}

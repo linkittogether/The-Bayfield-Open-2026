@@ -18,6 +18,9 @@
     "grint:handicaps": "tsx --env-file=.env.local scripts/grint-handicaps.ts",
     "grint:round": "tsx --env-file=.env.local scripts/grint-round.ts",
     "season:setup": "tsx --env-file=.env.local scripts/setup-season.ts",
+    "admin:email": "tsx --env-file=.env.local scripts/set-admin-email.ts",
+    "check:emails": "tsx --env-file=.env.local scripts/check-player-email.ts",
+    "season:current": "tsx --env-file=.env.local scripts/set-current-season.ts",
     "grint:import": "tsx --env-file=.env.local scripts/grint-import.ts",
     "backfill:seasons": "tsx --env-file=.env.local scripts/backfill-seasons.ts",
     "draft:seed": "tsx --env-file=.env.local scripts/day1-draft-testdata.ts seed",
@@ -25,6 +28,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@supabase/ssr": "^0.12.1",
     "@supabase/supabase-js": "^2.105.3",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

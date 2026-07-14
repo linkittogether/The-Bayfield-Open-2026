@@ -49,3 +49,7 @@ next-env.d.ts
 
 # Grint scrape output (contains personal data)
 /grint-friends.txt
+
+# Local tournament data spreadsheets / exports (not part of the app)
+*.xlsx
+/players.csv

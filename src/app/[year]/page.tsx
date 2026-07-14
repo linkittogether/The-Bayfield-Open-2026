@@ -1,7 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ChevronRight, Flag, Settings, Trophy, Users } from "lucide-react";
+import { ArrowRight, ChevronRight, Flag, Settings, Shield, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { CloseDay1Button } from "@/components/close-day1-button";
 import { cn } from "@/lib/utils";
 import { formatNet } from "@/lib/format";
 import { getActiveRoster } from "@/lib/server/players";
@@ -32,8 +33,32 @@ export default async function HomePage({
   const userId = user?.kind === "player" ? user.player.id : null;
   const nextStep = readOnly
     ? null
-    : computeNextStep({ state, userId, isAdmin, day1Lb, picks, matches });
-  if (nextStep) nextStep.href = `/${yr}${nextStep.href}`;
+    : computeNextStep({
+        state,
+        userId,
+        isAdmin,
+        day1Lb,
+        picks,
+        matches,
+        rosterCount: playerList.length,
+      });
+  if (nextStep) {
+    nextStep.href = `/${yr}${nextStep.href}`;
+    if (nextStep.actions) {
+      nextStep.actions = nextStep.actions.map((a) => ({
+        ...a,
+        href: `/${yr}${a.href}`,
+      }));
+    }
+  }
+  const stepEyebrow =
+    nextStep?.audience === "admin" ? (
+      <span className="inline-flex items-center gap-1">
+        <Shield size={11} /> Admin task
+      </span>
+    ) : (
+      "Your next step"
+    );
 
   return (
     <AppShell year={yr}>
@@ -58,59 +83,143 @@ export default async function HomePage({
         </div>
       </div>
 
-      {nextStep && (
-        <Link href={nextStep.href}>
+      {nextStep &&
+        (nextStep.actions || nextStep.closeDay1 ? (
           <div
             className={cn(
-              "rounded-2xl p-4 mb-5 flex items-center gap-4 active:scale-[0.98] transition-transform border-2",
+              "rounded-2xl p-4 mb-5 border-2",
               nextStep.urgent
                 ? "bg-primary text-white border-primary"
                 : "bg-accent border-secondary/40",
             )}
           >
-            <div
-              className={cn(
-                "w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl",
-                nextStep.urgent ? "bg-white/20" : "bg-secondary/15",
-              )}
-            >
-              {nextStep.emoji}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
+            <div className="flex items-center gap-4">
+              <div
                 className={cn(
-                  "text-[10px] font-bold uppercase tracking-widest mb-0.5",
-                  nextStep.urgent ? "text-green-200" : "text-secondary",
+                  "w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl",
+                  nextStep.urgent ? "bg-white/20" : "bg-secondary/15",
                 )}
               >
-                Your next step
-              </p>
-              <p
-                className={cn(
-                  "font-bold text-base leading-snug",
-                  nextStep.urgent ? "text-white" : "text-foreground",
-                )}
-              >
-                {nextStep.label}
-              </p>
-              {nextStep.sub && (
+                {nextStep.emoji}
+              </div>
+              <div className="flex-1 min-w-0">
                 <p
                   className={cn(
-                    "text-xs mt-0.5",
-                    nextStep.urgent ? "text-green-200" : "text-muted-foreground",
+                    "text-[10px] font-bold uppercase tracking-widest mb-0.5",
+                    nextStep.urgent ? "text-green-200" : "text-secondary",
                   )}
                 >
-                  {nextStep.sub}
+                  {stepEyebrow}
                 </p>
-              )}
+                <p
+                  className={cn(
+                    "font-bold text-base leading-snug",
+                    nextStep.urgent ? "text-white" : "text-foreground",
+                  )}
+                >
+                  {nextStep.label}
+                </p>
+                {nextStep.sub && (
+                  <p
+                    className={cn(
+                      "text-xs mt-0.5",
+                      nextStep.urgent ? "text-green-200" : "text-muted-foreground",
+                    )}
+                  >
+                    {nextStep.sub}
+                  </p>
+                )}
+              </div>
             </div>
-            <ArrowRight size={20} className={nextStep.urgent ? "text-white/80" : "text-muted-foreground"} />
+            {nextStep.closeDay1 ? (
+              <CloseDay1Button />
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                {nextStep.actions?.map((a) => (
+                  <Link
+                    key={a.href}
+                    href={a.href}
+                    className="h-11 rounded-xl bg-white text-primary font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                  >
+                    {a.label}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-        </Link>
-      )}
+        ) : (
+          <Link href={nextStep.href}>
+            <div
+              className={cn(
+                "rounded-2xl p-4 mb-5 flex items-center gap-4 active:scale-[0.98] transition-transform border-2",
+                nextStep.urgent
+                  ? "bg-primary text-white border-primary"
+                  : "bg-accent border-secondary/40",
+              )}
+            >
+              <div
+                className={cn(
+                  "w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl",
+                  nextStep.urgent ? "bg-white/20" : "bg-secondary/15",
+                )}
+              >
+                {nextStep.emoji}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-widest mb-0.5",
+                    nextStep.urgent ? "text-green-200" : "text-secondary",
+                  )}
+                >
+                  {stepEyebrow}
+                </p>
+                <p
+                  className={cn(
+                    "font-bold text-base leading-snug",
+                    nextStep.urgent ? "text-white" : "text-foreground",
+                  )}
+                >
+                  {nextStep.label}
+                </p>
+                {nextStep.sub && (
+                  <p
+                    className={cn(
+                      "text-xs mt-0.5",
+                      nextStep.urgent ? "text-green-200" : "text-muted-foreground",
+                    )}
+                  >
+                    {nextStep.sub}
+                  </p>
+                )}
+              </div>
+              <ArrowRight size={20} className={nextStep.urgent ? "text-white/80" : "text-muted-foreground"} />
+            </div>
+          </Link>
+        ))}
 
       <div className="flex flex-col gap-3 mb-5">
-        <DayCard day={1} title="Day 1 — Just You" subtitle="9 holes · Handicap scoring · Partner pick" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
+        <DayCard day={1} title="Day 1 — Just You" subtitle="9 holes · Handicap scoring" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
+        {state?.day1Complete && (
+          <Link href={`/${yr}/day1/picks`} className="-mt-1 ml-8">
+            <div className="bg-white rounded-xl p-3 border border-border flex items-center gap-3 transition-all active:scale-[0.98]">
+              <div className="w-8 h-8 rounded-full bg-secondary/15 flex items-center justify-center text-base flex-shrink-0">
+                🤝
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">Partner Draft</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {state.day1PickingComplete
+                    ? "Teams set"
+                    : picks.nextPicker
+                      ? `${picks.nextPicker.name} is picking`
+                      : "Draft in progress"}
+                </p>
+              </div>
+              <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
+            </div>
+          </Link>
+        )}
         <DayCard day={2} title="Day 2 — Partner Up" subtitle="27 holes · Combined net score" complete={state?.day2Complete} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
         <DayCard day={3} title="Day 3 — 10 v 10" subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
       </div>
@@ -192,6 +301,14 @@ type NextStep = {
   href: string;
   emoji: string;
   urgent: boolean;
+  // Which "hat" the action is for. Admins are also players, so we badge
+  // admin-scoped steps to disambiguate ("manage the tournament" vs "your turn").
+  audience?: "admin" | "player";
+  // When present, the tile renders these as tappable buttons instead of being a
+  // single link (e.g. Day 1: enter manually vs. pull from The Grint).
+  actions?: { label: string; href: string }[];
+  // When true, the tile renders the "close Day 1 scoring" action button.
+  closeDay1?: boolean;
 };
 
 function computeNextStep(args: {
@@ -201,8 +318,9 @@ function computeNextStep(args: {
   day1Lb: Awaited<ReturnType<typeof getDay1Leaderboard>>;
   picks: Awaited<ReturnType<typeof getDay1PicksOverview>>;
   matches: Awaited<ReturnType<typeof getDay3Matches>>;
+  rosterCount: number;
 }): NextStep | null {
-  const { state, userId, isAdmin, day1Lb, picks, matches } = args;
+  const { state, userId, isAdmin, day1Lb, picks, matches, rosterCount } = args;
   if (!state) return null;
 
   if (!state.day3Complete && (state.day2Complete || state.day2DraftComplete)) {
@@ -266,7 +384,8 @@ function computeNextStep(args: {
     };
   }
 
-  if (!state.day1PickingComplete) {
+  // Day 1 must be fully scored before partner-picking is offered.
+  if (state.day1Complete && !state.day1PickingComplete) {
     const nextPicker = picks?.nextPicker;
     if (nextPicker) {
       const isMyTurn = userId !== null && nextPicker.id === userId;
@@ -279,6 +398,7 @@ function computeNextStep(args: {
           href: "/day1/picks",
           emoji: "🤜",
           urgent: true,
+          audience: isAdmin ? "admin" : "player",
         };
       }
       return {
@@ -292,16 +412,51 @@ function computeNextStep(args: {
   }
 
   if (!state.day1Complete) {
+    const entryActions = [
+      { label: "Enter manually", href: "/day1/scores" },
+      { label: "Pull from Grint", href: "/day1/scores?pull=1" },
+    ];
     if (userId) {
       const hasScored = day1Lb.find((e) => e.id === userId);
+      if (hasScored) {
+        return {
+          label: "View Day 1 leaderboard",
+          sub: `Your net score: ${formatNet(hasScored.netScore)} · Rank #${hasScored.rank}`,
+          href: "/day1/leaderboard",
+          emoji: "🏌️",
+          urgent: false,
+        };
+      }
       return {
-        label: hasScored ? "View Day 1 leaderboard" : "Enter your Day 1 score",
-        sub: hasScored
-          ? `Your net score: ${formatNet(hasScored.netScore)} · Rank #${hasScored.rank}`
-          : "9 holes · Your gross score goes in here",
-        href: hasScored ? "/day1/leaderboard" : "/day1/scores",
+        label: "Enter your Day 1 score",
+        href: "/day1/scores",
         emoji: "🏌️",
-        urgent: !hasScored,
+        urgent: true,
+        actions: entryActions,
+        audience: "player",
+      };
+    }
+    if (isAdmin) {
+      const allScored = rosterCount > 0 && day1Lb.length >= rosterCount;
+      if (allScored) {
+        return {
+          label: "Close Day 1 scoring",
+          sub: `All ${rosterCount} scores are in — lock the standings and start partner picks.`,
+          href: "/day1/leaderboard",
+          emoji: "🔒",
+          urgent: true,
+          audience: "admin",
+          closeDay1: true,
+        };
+      }
+      return {
+        label: "Enter everyone's Day 1 scores",
+        sub: "Pull from The Grint or enter manually, then close scoring",
+        href: "/day1/scores",
+        emoji: "🏌️",
+        urgent: true,
+        actions: entryActions,
+        audience: "admin",
       };
     }
     return {

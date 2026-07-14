@@ -3,9 +3,12 @@ import { AppShell } from "@/components/app-shell";
 import { getDay2ScoreEntry } from "@/lib/server/day2";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
+import { BulkGrintPull } from "@/components/bulk-grint-pull";
 import { Day2ScoresForm } from "./scores-form";
 
 export const metadata = { title: "Day 2 — Enter Score" };
+// Bulk Grint pull fans out network calls per player; give it headroom.
+export const maxDuration = 60;
 
 export default async function Day2ScoresPage({
   params,
@@ -51,6 +54,11 @@ export default async function Day2ScoresPage({
       <p className="text-xs text-muted-foreground mb-4">
         Saturday is individual stroke play — enter your own gross for each round.
       </p>
+      {isAdmin && (
+        <div className="mb-5">
+          <BulkGrintPull day={2} />
+        </div>
+      )}
       <Day2ScoresForm
         segments={entry.segments.map((s) => ({
           id: s.id,

@@ -33,12 +33,14 @@ export function ScoresForm({
   submittedIds,
   lockedPlayerId,
   isAdmin,
+  autoPull = false,
 }: {
   players: PlayerLite[];
   segment: SegmentLite | null;
   submittedIds: number[];
   lockedPlayerId: number | null;
   isAdmin: boolean;
+  autoPull?: boolean;
 }) {
   const router = useRouter();
   const submitted = new Set(submittedIds);
@@ -137,7 +139,12 @@ export function ScoresForm({
       )}
 
       {selected && segment && (
-        <GrintPullButton segmentId={segment.id} playerId={selected} onPulled={setGross} />
+        <GrintPullButton
+          segmentId={segment.id}
+          playerId={selected}
+          onPulled={setGross}
+          autoPull={autoPull}
+        />
       )}
 
       {selected && (

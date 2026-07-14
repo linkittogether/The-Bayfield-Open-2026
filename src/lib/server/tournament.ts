@@ -54,8 +54,14 @@ export async function updateSeasonState(
 }
 
 /** Deletes all results for one season and resets its state fields. */
+// Reset is too destructive for a live tournament — disabled. The UI no longer
+// renders it (admin/page.tsx); this guard also blocks direct server-action
+// calls. Flip to true to re-enable.
+const RESET_ENABLED = false;
+
 export async function resetSeason(seasonId: number) {
   await requireAdmin();
+  if (!RESET_ENABLED) throw new Error("Tournament reset is disabled.");
   await assertCurrentSeason(seasonId);
   await db.transaction(async (tx) => {
     const matchIds = tx

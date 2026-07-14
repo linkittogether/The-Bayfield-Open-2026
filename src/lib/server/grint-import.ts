@@ -87,13 +87,18 @@ export type MatchStatus = "matched" | "none" | "ambiguous" | "no-course-id";
 export interface SegmentMatch {
   segment: ImportSegment;
   status: MatchStatus;
-  candidates: MatchedRound[]; // 0 (none), 1 (matched), or >1 (ambiguous)
+  // Sorted latest-first; candidates[0] is the canonical round. Length 0 = none.
+  candidates: MatchedRound[];
 }
 
 /**
  * Find the round(s) in `rounds` that satisfy a segment: same hole count, same
  * date (when the segment has one), and — confirmed via a detail fetch — the same
  * Grint course. Detail is only fetched for the (few) rough candidates.
+ *
+ * If a player logged more than one qualifying round that day, we take the LAST
+ * one as canonical (latest date, then highest Grint scoreId = most recently
+ * entered) rather than flagging it — never "ambiguous".
  */
 export async function matchSegment(
   rounds: GrintRound[],
@@ -124,8 +129,13 @@ export async function matchSegment(
     }
   }
 
-  const status: MatchStatus =
-    candidates.length === 0 ? "none" : candidates.length === 1 ? "matched" : "ambiguous";
+  // Latest-first: later date wins, then the higher scoreId (entered later).
+  candidates.sort((a, b) => {
+    if (a.isoDate !== b.isoDate) return a.isoDate < b.isoDate ? 1 : -1;
+    return Number(b.scoreId) - Number(a.scoreId);
+  });
+
+  const status: MatchStatus = candidates.length === 0 ? "none" : "matched";
   return { segment: seg, status, candidates };
 }
 

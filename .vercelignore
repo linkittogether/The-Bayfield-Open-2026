@@ -1,0 +1,5 @@
+# Local data / spreadsheets not needed for the deployed app
+*.xlsx
+*.csv
+.env
+.env.local

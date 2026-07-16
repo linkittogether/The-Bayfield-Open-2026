@@ -13,6 +13,7 @@ import {
   segments,
 } from "@/db/schema";
 import { requireAdmin } from "./auth-guards";
+import { notifySeasonChange } from "./realtime";
 import { assertCurrentSeason } from "./seasons";
 
 const updateSchema = z
@@ -50,6 +51,7 @@ export async function updateSeasonState(
     .set(data)
     .where(eq(seasons.id, seasonId))
     .returning();
+  await notifySeasonChange(seasonId);
   return row;
 }
 

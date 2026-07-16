@@ -1,6 +1,6 @@
 import { Shield } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { getDay3Teams } from "@/lib/server/day3";
+import { getDay3Teams, getMatchDraft } from "@/lib/server/day3";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { SetupBuilder } from "./setup-builder";
@@ -15,16 +15,23 @@ export default async function Day3SetupPage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
-  const [user, teams] = await Promise.all([
+  const [user, teams, draft] = await Promise.all([
     getCurrentUser(),
     getDay3Teams(season.id),
+    getMatchDraft(season.id),
   ]);
 
   const isAdmin = user?.kind === "admin";
   const userId = user?.kind === "player" ? user.player.id : null;
-  const allRoster = [...teams.truffleHogs, ...teams.myceliumSyndicate];
-  const isCaptain = userId !== null && allRoster.some((p) => p.playerId === userId && p.isCaptain);
-  const canSetup = !readOnly && (isAdmin || isCaptain);
+  const viewerSide: "truffle" | "syndicate" | null =
+    userId !== null
+      ? teams.truffleHogs.some((p) => p.playerId === userId && p.isCaptain)
+        ? "truffle"
+        : teams.myceliumSyndicate.some((p) => p.playerId === userId && p.isCaptain)
+          ? "syndicate"
+          : null
+      : null;
+  const canSetup = !readOnly && (isAdmin || viewerSide !== null);
 
   if (!canSetup) {
     return (
@@ -47,6 +54,9 @@ export default async function Day3SetupPage({
     <AppShell title="Match Setup" showBack backTo={`/${yr}/day3/leaderboard`} year={yr}>
       <SetupBuilder
         year={yr}
+        draft={draft}
+        isAdmin={isAdmin}
+        viewerSide={viewerSide}
         truffle={teams.truffleHogs
           .filter((p) => !p.absent)
           .map((p) => ({ id: p.playerId, name: p.name }))}

@@ -61,6 +61,20 @@ export interface MatchResult extends MatchStatus {
 }
 
 /** Rounded 18-hole course handicap, or null if course inputs are missing. */
+// --- Day 3 matchup draft (server-persisted, live-synced) -------------------
+export type MatchDraftSide = "truffle" | "syndicate";
+export interface MatchDraftMatch {
+  trufflePlayerId: number;
+  syndicatePlayerId: number;
+  nominatedBy: MatchDraftSide; // which side nominated first in this matchup (for undo)
+}
+export interface MatchDraft {
+  started: boolean;
+  nominating: MatchDraftSide; // whose turn to nominate
+  pending: { playerId: number; side: MatchDraftSide } | null; // nominated, awaiting opponent
+  matches: MatchDraftMatch[];
+}
+
 export function courseHandicapFor(index: number, course: MatchCourse): number | null {
   if (course.rating == null || course.slope == null || course.par == null) return null;
   return Math.round(

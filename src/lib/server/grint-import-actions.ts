@@ -16,6 +16,7 @@ import {
 } from "./grint-import";
 import { grintRefreshCount } from "./grint-rounds";
 import { getActiveRoster } from "./players";
+import { notifySeasonChange } from "./realtime";
 import { getCurrentSeasonId } from "./seasons";
 
 /**
@@ -145,6 +146,7 @@ export async function bulkPullDay(day: number): Promise<BulkPullSummary> {
     }
   }
 
+  if (written > 0) await notifySeasonChange(seasonId);
   return {
     day,
     written,

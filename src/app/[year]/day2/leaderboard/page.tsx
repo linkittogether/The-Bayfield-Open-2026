@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { ClipboardList, Trophy } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -55,12 +56,12 @@ export default async function Day2LeaderboardPage({
             </p>
           )}
           {allDone && !readOnly && !state?.day2DraftComplete && (
-            <Button
-              asChild
-              className="mt-4 bg-white text-primary hover:bg-white/90 w-full"
+            <Link
+              href={`/${yr}/day2/draft`}
+              className="mt-4 w-full h-11 rounded-lg bg-white text-primary font-semibold flex items-center justify-center hover:bg-white/90 active:scale-95 transition-colors"
             >
-              <Link href={`/${yr}/day2/draft`}>Proceed to Day 3 Draft</Link>
-            </Button>
+              Proceed to Day 3 Draft
+            </Link>
           )}
         </div>
       )}
@@ -102,6 +103,30 @@ export default async function Day2LeaderboardPage({
             const isMe =
               userId !== null &&
               (entry.player1Id === userId || entry.player2Id === userId);
+            const playerRows = [
+              {
+                name: entry.player1Name,
+                total: { gross: entry.player1TotalGross, net: entry.player1Net },
+                rounds: [
+                  { gross: entry.player1Day1Gross, net: entry.player1Day1Net },
+                  ...entry.player1Day2Grosses.map((gross, k) => ({
+                    gross,
+                    net: entry.player1Day2Nets[k],
+                  })),
+                ],
+              },
+              {
+                name: entry.player2Name,
+                total: { gross: entry.player2TotalGross, net: entry.player2Net },
+                rounds: [
+                  { gross: entry.player2Day1Gross, net: entry.player2Day1Net },
+                  ...entry.player2Day2Grosses.map((gross, k) => ({
+                    gross,
+                    net: entry.player2Day2Nets[k],
+                  })),
+                ],
+              },
+            ];
             return (
               <div
                 key={entry.id}
@@ -147,12 +172,14 @@ export default async function Day2LeaderboardPage({
 
                 <div className="border-t border-border px-3 py-2 overflow-x-auto">
                   <div
-                    className="grid gap-x-2 gap-y-1 items-center text-xs min-w-max"
+                    className="grid gap-x-2 gap-y-1.5 items-center text-xs min-w-max"
                     style={{
                       gridTemplateColumns: `minmax(4rem,1fr) repeat(${entry.day2SegLabels.length + 2}, 2.75rem)`,
                     }}
                   >
-                    <span />
+                    <span className="text-[9px] text-muted-foreground normal-case">
+                      gross / <span className="italic">net</span>
+                    </span>
                     <span className="text-center text-[10px] uppercase tracking-wide text-muted-foreground">Day 1</span>
                     {entry.day2SegLabels.map((lbl, k) => (
                       <span key={`h${k}`} className="text-center text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -161,19 +188,25 @@ export default async function Day2LeaderboardPage({
                     ))}
                     <span className="text-center text-[10px] uppercase tracking-wide text-muted-foreground">Total</span>
 
-                    <span className="font-medium truncate">{entry.player1Name}</span>
-                    <span className="text-center text-muted-foreground">{formatNet(entry.player1Day1Net)}</span>
-                    {entry.player1Day2Nets.map((n, k) => (
-                      <span key={`p1${k}`} className="text-center text-muted-foreground">{formatNet(n)}</span>
+                    {playerRows.map((pl) => (
+                      <Fragment key={pl.name}>
+                        <span className="font-medium truncate">{pl.name}</span>
+                        {pl.rounds.map((r, k) => (
+                          <span key={k} className="text-center leading-tight">
+                            <span className="block font-semibold">{r.gross ?? "—"}</span>
+                            <span className="block text-[10px] italic text-muted-foreground">
+                              {formatNet(r.net)}
+                            </span>
+                          </span>
+                        ))}
+                        <span className="text-center leading-tight">
+                          <span className="block font-semibold">{pl.total.gross ?? "—"}</span>
+                          <span className="block text-[10px] italic text-muted-foreground">
+                            {formatNet(pl.total.net)}
+                          </span>
+                        </span>
+                      </Fragment>
                     ))}
-                    <span className="text-center font-semibold">{formatNet(entry.player1Net)}</span>
-
-                    <span className="font-medium truncate">{entry.player2Name}</span>
-                    <span className="text-center text-muted-foreground">{formatNet(entry.player2Day1Net)}</span>
-                    {entry.player2Day2Nets.map((n, k) => (
-                      <span key={`p2${k}`} className="text-center text-muted-foreground">{formatNet(n)}</span>
-                    ))}
-                    <span className="text-center font-semibold">{formatNet(entry.player2Net)}</span>
                   </div>
                 </div>
               </div>

@@ -26,6 +26,8 @@ export interface PlayerScore {
   netByDay: Map<number, number>;
   /** Net per individual segment (segmentId → net), for round-by-round breakdowns. */
   netBySegment: Map<number, number>;
+  /** Gross per individual segment (segmentId → gross). Always present when scored. */
+  grossBySegment: Map<number, number>;
   segmentsScored: number;
   /** True when every scored segment had the course data needed to compute net. */
   netComplete: boolean;
@@ -102,12 +104,14 @@ export async function getSeasonScoring(seasonId: number): Promise<SeasonScoring>
         cumulativeNet: null,
         netByDay: new Map(),
         netBySegment: new Map(),
+        grossBySegment: new Map(),
         segmentsScored: 0,
         netComplete: true,
       };
       byPlayer.set(sc.playerId, ps);
     }
     ps.cumulativeGross += sc.gross;
+    ps.grossBySegment.set(sc.segmentId, sc.gross);
     ps.segmentsScored += 1;
     if (net == null) ps.netComplete = false;
     else {

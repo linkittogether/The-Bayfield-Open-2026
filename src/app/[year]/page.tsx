@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ChevronRight, Flag, Settings, Shield, Trophy, Users } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, Flag, Settings, Shield, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { CloseDay1Button } from "@/components/close-day1-button";
 import { cn } from "@/lib/utils";
 import { formatNet } from "@/lib/format";
 import { getActiveRoster } from "@/lib/server/players";
 import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
+import { getDay2Leaderboard } from "@/lib/server/day2";
 import { getDay3Matches } from "@/lib/server/day3";
 import { getSeasonState } from "@/lib/server/tournament";
 import { getSeasonView } from "@/lib/server/seasons";
@@ -20,17 +21,20 @@ export default async function HomePage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
-  const [user, state, playerList, day1Lb, picks, matches] = await Promise.all([
+  const [user, state, playerList, day1Lb, picks, matches, day2Lb] = await Promise.all([
     getCurrentUser(),
     getSeasonState(season.id),
     getActiveRoster(season.id),
     getDay1Leaderboard(season.id),
     getDay1PicksOverview(season.id),
     getDay3Matches(season.id),
+    getDay2Leaderboard(season.id),
   ]);
 
   const isAdmin = user?.kind === "admin";
   const userId = user?.kind === "player" ? user.player.id : null;
+  // All Day-2 stroke rounds scored for every pair → the Day 3 team draft opens.
+  const day2AllScored = day2Lb.length > 0 && day2Lb.every((e) => e.complete);
   const nextStep = readOnly
     ? null
     : computeNextStep({
@@ -41,6 +45,7 @@ export default async function HomePage({
         picks,
         matches,
         rosterCount: playerList.length,
+        day2AllScored,
       });
   if (nextStep) {
     nextStep.href = `/${yr}${nextStep.href}`;
@@ -202,7 +207,12 @@ export default async function HomePage({
         <DayCard day={1} title="Day 1 — Just You" subtitle="9 holes · Handicap scoring" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
         {state?.day1Complete && (
           <Link href={`/${yr}/day1/picks`} className="-mt-1 ml-8">
-            <div className="bg-white rounded-xl p-3 border border-border flex items-center gap-3 transition-all active:scale-[0.98]">
+            <div
+              className={cn(
+                "bg-white rounded-xl p-3 border flex items-center gap-3 transition-all active:scale-[0.98]",
+                state.day1PickingComplete ? "border-primary/40" : "border-border",
+              )}
+            >
               <div className="w-8 h-8 rounded-full bg-secondary/15 flex items-center justify-center text-base flex-shrink-0">
                 🤝
               </div>
@@ -216,11 +226,40 @@ export default async function HomePage({
                       : "Draft in progress"}
                 </p>
               </div>
-              <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
+              {state.day1PickingComplete ? (
+                <Check size={16} className="text-green-600 flex-shrink-0" />
+              ) : (
+                <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
+              )}
             </div>
           </Link>
         )}
-        <DayCard day={2} title="Day 2 — Partner Up" subtitle="27 holes · Combined net score" complete={state?.day2Complete} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
+        <DayCard day={2} title="Day 2 — Partner Up" subtitle="27 holes · Combined net score" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
+        {day2AllScored && (
+          <Link href={`/${yr}/day2/draft`} className="-mt-1 ml-8">
+            <div
+              className={cn(
+                "bg-white rounded-xl p-3 border flex items-center gap-3 transition-all active:scale-[0.98]",
+                state?.day2DraftComplete ? "border-primary/40" : "border-border",
+              )}
+            >
+              <div className="w-8 h-8 rounded-full bg-secondary/15 flex items-center justify-center text-base flex-shrink-0">
+                ⚔️
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm">Match Play Draft</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {state?.day2DraftComplete ? "Teams drafted" : "Draft the two teams"}
+                </p>
+              </div>
+              {state?.day2DraftComplete ? (
+                <Check size={16} className="text-green-600 flex-shrink-0" />
+              ) : (
+                <ChevronRight size={14} className="text-muted-foreground flex-shrink-0" />
+              )}
+            </div>
+          </Link>
+        )}
         <DayCard day={3} title="Day 3 — 10 v 10" subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
       </div>
 
@@ -319,8 +358,10 @@ function computeNextStep(args: {
   picks: Awaited<ReturnType<typeof getDay1PicksOverview>>;
   matches: Awaited<ReturnType<typeof getDay3Matches>>;
   rosterCount: number;
+  day2AllScored: boolean;
 }): NextStep | null {
-  const { state, userId, isAdmin, day1Lb, picks, matches, rosterCount } = args;
+  const { state, userId, isAdmin, day1Lb, picks, matches, rosterCount, day2AllScored } =
+    args;
   if (!state) return null;
 
   if (!state.day3Complete && (state.day2Complete || state.day2DraftComplete)) {
@@ -366,6 +407,16 @@ function computeNextStep(args: {
   }
 
   if (state.day1PickingComplete && !state.day2Complete && !state.day2DraftComplete) {
+    // All Day-2 rounds are in → the next step is drafting the Day 3 teams.
+    if (day2AllScored) {
+      return {
+        label: "Match Play Draft",
+        sub: "Day 2 is in — draft the 10 v 10 teams for Day 3",
+        href: "/day2/draft",
+        emoji: "⚔️",
+        urgent: true,
+      };
+    }
     if (userId) {
       return {
         label: "Enter your Day 2 score",

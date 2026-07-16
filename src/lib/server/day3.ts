@@ -4,6 +4,7 @@ import { aliasedTable, and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
+  appConfig,
   courseHoles,
   day3Holes,
   day3Matches,
@@ -17,11 +18,20 @@ import {
   computeMatch,
   matchStatusFromOutcomes,
   type HoleOutcome,
+  type MatchDraft,
+  type MatchDraftSide,
   type MatchHoleInput,
 } from "@/lib/matchplay";
 import { fetchHoleScores, fetchRounds } from "./grint-rounds";
 import { getImportSegments, matchSegment } from "./grint-import";
-import { requireAdmin, requireAdminOrMatchPlayer } from "./auth-guards";
+import {
+  AuthError,
+  requireAdmin,
+  requireAdminOrCaptain,
+  requireAdminOrMatchPlayer,
+} from "./auth-guards";
+import { getCurrentUser } from "@/lib/session";
+import { notifySeasonChange } from "./realtime";
 import { getCurrentSeasonId } from "./seasons";
 
 const matchInputSchema = z.object({
@@ -265,10 +275,10 @@ export async function getDay3Match(id: number) {
 }
 
 export async function setDay3Matches(input: z.input<typeof setMatchesSchema>) {
-  await requireAdmin();
   const data = setMatchesSchema.parse(input);
   const seasonId = await getCurrentSeasonId();
-  return db.transaction(async (tx) => {
+  await requireAdminOrCaptain(seasonId);
+  const result = await db.transaction(async (tx) => {
     const matchIds = tx
       .select({ id: day3Matches.id })
       .from(day3Matches)
@@ -281,6 +291,8 @@ export async function setDay3Matches(input: z.input<typeof setMatchesSchema>) {
       .returning();
     return inserted;
   });
+  await notifySeasonChange(seasonId);
+  return result;
 }
 
 /** Enter/overwrite both players' gross on a hole. Net winner is computed on read. */
@@ -314,6 +326,7 @@ export async function submitDay3Hole(input: z.input<typeof submitHoleSchema>) {
       },
     })
     .returning();
+  await notifySeasonChange(seasonId);
   return row;
 }
 
@@ -333,6 +346,7 @@ export async function deleteDay3Hole(matchId: number, holeNumber: number) {
     .where(
       and(eq(day3Holes.matchId, matchId), eq(day3Holes.holeNumber, holeNumber)),
     );
+  await notifySeasonChange(seasonId);
   return { rowsAffected: result.count };
 }
 
@@ -438,6 +452,7 @@ export async function importMatchFromGrint(matchId: number) {
     }
   }
 
+  await notifySeasonChange(seasonId);
   return {
     truffleFound: truffle != null,
     syndicateFound: syndicate != null,
@@ -452,5 +467,155 @@ export async function completeDay3() {
     .update(seasons)
     .set({ day3Complete: true, currentDay: 3 })
     .where(eq(seasons.id, seasonId));
+  await notifySeasonChange(seasonId);
   return { ok: true };
+}
+
+// --- Day 3 matchup draft: server-persisted so it syncs live across devices ---
+// The in-progress draft lives as JSON in app_config; each step notifies the
+// season channel so every connected client refreshes. The finished matchups are
+// still written to day3Matches via setDay3Matches (the "Save" step).
+
+const matchDraftKey = (seasonId: number) => `day3_draft:${seasonId}`;
+const otherSide = (s: MatchDraftSide): MatchDraftSide =>
+  s === "truffle" ? "syndicate" : "truffle";
+
+export async function getMatchDraft(seasonId: number): Promise<MatchDraft | null> {
+  const [row] = await db
+    .select({ value: appConfig.value })
+    .from(appConfig)
+    .where(eq(appConfig.key, matchDraftKey(seasonId)))
+    .limit(1);
+  if (!row) return null;
+  try {
+    return JSON.parse(row.value) as MatchDraft;
+  } catch {
+    return null;
+  }
+}
+
+async function saveMatchDraft(seasonId: number, draft: MatchDraft) {
+  const value = JSON.stringify(draft);
+  await db
+    .insert(appConfig)
+    .values({ key: matchDraftKey(seasonId), value })
+    .onConflictDoUpdate({ target: appConfig.key, set: { value } });
+  await notifySeasonChange(seasonId);
+}
+
+const usedIds = (d: MatchDraft): Set<number> => {
+  const ids = new Set<number>();
+  for (const m of d.matches) {
+    ids.add(m.trufflePlayerId);
+    ids.add(m.syndicatePlayerId);
+  }
+  if (d.pending) ids.add(d.pending.playerId);
+  return ids;
+};
+
+/**
+ * Who is acting on the draft: an admin (controls both sides) or a captain
+ * (controls only their own side). Throws if neither.
+ */
+async function draftActor(
+  seasonId: number,
+): Promise<{ isAdmin: boolean; captainSide: MatchDraftSide | null }> {
+  const user = await getCurrentUser();
+  if (!user) throw new AuthError();
+  if (user.kind === "admin") return { isAdmin: true, captainSide: null };
+  const [row] = await db
+    .select({ slug: teams.slug })
+    .from(seasonRosters)
+    .innerJoin(teams, eq(teams.id, seasonRosters.teamId))
+    .where(
+      and(
+        eq(seasonRosters.seasonId, seasonId),
+        eq(seasonRosters.playerId, user.player.id),
+        eq(seasonRosters.isCaptain, true),
+      ),
+    )
+    .limit(1);
+  if (!row) throw new AuthError();
+  return { isAdmin: false, captainSide: row.slug === "truffle_hogs" ? "truffle" : "syndicate" };
+}
+
+/** The side that may undo the most recent draft action. */
+function undoSideFor(draft: MatchDraft): MatchDraftSide | null {
+  if (draft.pending) return draft.pending.side; // whoever nominated cancels it
+  const last = draft.matches[draft.matches.length - 1];
+  return last ? otherSide(last.nominatedBy) : null; // whoever picked undoes it
+}
+
+export async function startMatchDraft(firstSide: MatchDraftSide) {
+  const seasonId = await getCurrentSeasonId();
+  await draftActor(seasonId); // admin or either captain may start
+  const draft: MatchDraft = {
+    started: true,
+    nominating: firstSide,
+    pending: null,
+    matches: [],
+  };
+  await saveMatchDraft(seasonId, draft);
+  return draft;
+}
+
+export async function nominateMatchPlayer(playerId: number) {
+  const seasonId = await getCurrentSeasonId();
+  const actor = await draftActor(seasonId);
+  const draft = await getMatchDraft(seasonId);
+  if (!draft?.started) throw new Error("Draft has not started");
+  if (draft.pending) throw new Error("A nomination is already pending");
+  if (!actor.isAdmin && actor.captainSide !== draft.nominating)
+    throw new AuthError("It's not your team's turn to nominate");
+  if (usedIds(draft).has(playerId)) throw new Error("Player already drafted");
+  draft.pending = { playerId, side: draft.nominating };
+  await saveMatchDraft(seasonId, draft);
+  return draft;
+}
+
+export async function pickMatchOpponent(playerId: number) {
+  const seasonId = await getCurrentSeasonId();
+  const actor = await draftActor(seasonId);
+  const draft = await getMatchDraft(seasonId);
+  if (!draft?.pending) throw new Error("No pending nomination");
+  const pickingSide = otherSide(draft.pending.side);
+  if (!actor.isAdmin && actor.captainSide !== pickingSide)
+    throw new AuthError("It's not your team's turn to pick");
+  if (usedIds(draft).has(playerId)) throw new Error("Player already drafted");
+  const { playerId: nomId, side: nomSide } = draft.pending;
+  draft.matches.push({
+    trufflePlayerId: nomSide === "truffle" ? nomId : playerId,
+    syndicatePlayerId: nomSide === "truffle" ? playerId : nomId,
+    nominatedBy: nomSide,
+  });
+  draft.nominating = otherSide(nomSide); // the captain who just picked nominates next
+  draft.pending = null;
+  await saveMatchDraft(seasonId, draft);
+  return draft;
+}
+
+export async function resetMatchDraft() {
+  await requireAdmin(); // wiping the whole draft is admin-only
+  const seasonId = await getCurrentSeasonId();
+  await db.delete(appConfig).where(eq(appConfig.key, matchDraftKey(seasonId)));
+  await notifySeasonChange(seasonId);
+  return { ok: true };
+}
+
+export async function undoMatchDraft() {
+  const seasonId = await getCurrentSeasonId();
+  const actor = await draftActor(seasonId);
+  const draft = await getMatchDraft(seasonId);
+  if (!draft) return null;
+  const undoSide = undoSideFor(draft);
+  if (!actor.isAdmin && undoSide && actor.captainSide !== undoSide)
+    throw new AuthError("You can only undo your own team's last action");
+  if (draft.pending) {
+    draft.pending = null;
+  } else if (draft.matches.length > 0) {
+    const last = draft.matches.pop()!;
+    draft.nominating = last.nominatedBy;
+  }
+  await saveMatchDraft(seasonId, draft);
+  return draft;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Camera, Check, Lock, Minus, Plus, User } from "lucide-react";
+import { Camera, Check, Minus, Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,6 @@ import { createPlayerFromForm } from "@/lib/server/players";
 export function RegisterForm() {
   const [name, setName] = useState("");
   const [handicap, setHandicap] = useState(0);
-  const [pin, setPin] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +28,6 @@ export function RegisterForm() {
   function reset() {
     setName("");
     setHandicap(0);
-    setPin("");
     setPhoto(null);
     setPreview(null);
     if (fileRef.current) fileRef.current.value = "";
@@ -39,13 +37,10 @@ export function RegisterForm() {
     e.preventDefault();
     setError(null);
     if (!name.trim()) return setError("Please enter a name");
-    if (!/^\d{4}$/.test(pin))
-      return setError("PIN must be 4 digits (required for player login)");
 
     const fd = new FormData();
     fd.set("name", name.trim());
     fd.set("handicap", String(handicap));
-    fd.set("pin", pin);
     if (photo) fd.set("photo", photo);
 
     startTransition(async () => {
@@ -127,25 +122,6 @@ export function RegisterForm() {
         </div>
         <p className="text-xs text-muted-foreground mt-1 text-center">
           Net score = Gross − ½ Handicap
-        </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="register-pin">
-          <Lock size={14} className="inline mr-1" /> Player PIN (4 digits)
-        </Label>
-        <Input
-          id="register-pin"
-          type="password"
-          inputMode="numeric"
-          maxLength={4}
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-          placeholder="4-digit PIN"
-          className="text-center text-xl tracking-widest h-12"
-        />
-        <p className="text-xs text-muted-foreground">
-          Players use this PIN to log in and enter their own scores. Can be reset later by an admin.
         </p>
       </div>
 

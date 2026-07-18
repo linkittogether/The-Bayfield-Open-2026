@@ -78,7 +78,11 @@ export const players = pgTable("players", {
     .notNull()
     .default(0),
   grintId: integer().unique(),
-  pinHash: text().notNull(),
+  // 4-digit login PIN for players without a Google account. Stored in plaintext
+  // so an admin can view/share it; the table is unreachable via the public API
+  // (RLS deny-all + the app connects as the RLS-bypassing postgres role). Unique
+  // so a PIN alone identifies one player at login. Null = no PIN set.
+  pin: text().unique(),
   // Google account email for SSO login; admin-assigned. Nullable until assigned.
   email: text().unique(),
   // Tournament organizer. An admin is just a player with this flag set.

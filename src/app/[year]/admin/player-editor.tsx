@@ -15,7 +15,7 @@ interface PlayerLite {
   name: string;
   photoUrl: string | null;
   handicap: number;
-  hasPin: boolean;
+  pin: string | null;
   email: string | null;
   isAdmin: boolean;
   /** Current season: handicap is manually pinned (protected from Grint pulls). */
@@ -37,7 +37,7 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
   function startEdit(p: PlayerLite) {
     setEditingId(p.id);
     setEditHcp(String(p.handicap));
-    setEditPin("");
+    setEditPin(p.pin ?? "");
     setEditEmail(p.email ?? "");
     setEditAdmin(p.isAdmin);
     setEditLock(p.handicapLocked);
@@ -135,11 +135,11 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                   <span
                     className={cn(
                       "flex items-center gap-0.5",
-                      p.hasPin ? "text-green-600" : "text-amber-600",
+                      p.pin ? "text-green-600" : "text-amber-600",
                     )}
                   >
                     <Lock size={10} />
-                    {p.hasPin ? "PIN set" : "No PIN"}
+                    {p.pin ? `PIN ${p.pin}` : "No PIN"}
                   </span>
                   <span>·</span>
                   <span
@@ -238,14 +238,14 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                   />
                 </div>
                 <div>
-                  <Label className="text-xs mb-1 block">Set / Change PIN (leave blank to keep current)</Label>
+                  <Label className="text-xs mb-1 block">Login PIN (4 digits, for players without Google)</Label>
                   <Input
-                    type="password"
+                    type="text"
                     inputMode="numeric"
                     maxLength={4}
                     value={editPin}
                     onChange={(e) => setEditPin(e.target.value.replace(/\D/g, ""))}
-                    placeholder="New PIN (4 digits)"
+                    placeholder="4-digit PIN"
                     className="text-center tracking-widest"
                   />
                 </div>

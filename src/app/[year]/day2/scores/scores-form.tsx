@@ -56,7 +56,14 @@ export function Day2ScoresForm({
       {isAdmin && (
         <div>
           <Label className="block mb-2">Select Player</Label>
-          <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+          {/* Full-height list until a player is picked (avoids dead whitespace);
+              then cap it to a scroll box so the score form stays reachable. */}
+          <div
+            className={cn(
+              "space-y-2 pr-1",
+              selectedId !== null && "max-h-56 overflow-y-auto",
+            )}
+          >
             {players.map((p) => (
               <button
                 key={p.id}

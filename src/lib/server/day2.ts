@@ -111,11 +111,12 @@ export async function getDay2Leaderboard(
   // segment_scores, so exclude it from the "all scored" check.
   const strokeSegCount = scoring.segments.filter((s) => s.day <= 2).length;
 
-  // Day-2 segments become breakdown columns — the 18-hole round first, then the
-  // back-9 (play order), labelled by hole count.
+  // Day-2 segments become breakdown columns — the 9-hole round first, then the
+  // 18 (fewest holes first), labelled by hole count. sortOrder is the tiebreak
+  // if two segments share a hole count.
   const day2Segs = scoring.segments
     .filter((s) => s.day === 2)
-    .sort((a, b) => b.holes - a.holes);
+    .sort((a, b) => a.holes - b.holes || a.sortOrder - b.sortOrder);
   const day2SegLabels = day2Segs.map((s) => `${s.holes}h`);
 
   const rows: Day2PairStanding[] = pairs.map((t) => {

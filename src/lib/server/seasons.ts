@@ -32,6 +32,19 @@ export async function listSeasons(): Promise<Season[]> {
     .orderBy(desc(seasons.year));
 }
 
+/**
+ * The season regular users should land on. Normally the current season, but if
+ * the current season is hidden (e.g. a dry-run sandbox is temporarily made
+ * current so it's writable), fall back to the most recent visible season so the
+ * public home page never routes people into the sandbox.
+ */
+export async function getLandingSeason(): Promise<Season> {
+  const current = await getCurrentSeason();
+  if (!current.hidden) return current;
+  const [latestVisible] = await listSeasons(); // non-hidden, year desc
+  return latestVisible ?? current;
+}
+
 export async function getSeasonByYear(year: number): Promise<Season | null> {
   const [row] = await db
     .select()

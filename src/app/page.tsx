@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCurrentSeason } from "@/lib/server/seasons";
+import { getLandingSeason } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 
 // Resolve current user + season at request time (no cached redirect).
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // Landing page: explains what the app is (also the Google-verified home page).
 // Signed-in users skip straight to the current season's app.
 export default async function RootPage() {
-  const [user, season] = await Promise.all([getCurrentUser(), getCurrentSeason()]);
+  const [user, season] = await Promise.all([getCurrentUser(), getLandingSeason()]);
   if (user) redirect(`/${season.year}`);
 
   return (

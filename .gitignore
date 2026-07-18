@@ -53,3 +53,7 @@ next-env.d.ts
 # Local tournament data spreadsheets / exports (not part of the app)
 *.xlsx
 /players.csv
+
+# Personal WhatsApp chat exports (never commit)
+WhatsApp Chat *
+_chat.txt

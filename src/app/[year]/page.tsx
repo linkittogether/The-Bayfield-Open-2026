@@ -55,8 +55,11 @@ export default async function HomePage({
   // match-play seasons finish with Day 3.
   const preMatchPlay = state?.matchPlay === false;
   const seasonComplete = preMatchPlay ? !!state?.day2Complete : !!state?.day3Complete;
-  // The Pairs champion is the top non-DQ'd pair (DQ'd pairs sort last).
-  const pairsChamp = day2Lb.find((p) => !p.disqualified) ?? null;
+  // The Pairs champion is the top pair with a real total (DQ'd and incomplete
+  // pairs sort last and have no combined net).
+  const pairsChamp =
+    day2Lb.find((p) => !p.disqualified && !p.incomplete && p.combinedNet != null) ??
+    null;
   const hc = day3Lb.summary;
   const huronTie = hc.trufflePoints === hc.syndicatePoints;
   const truffleWonCup = hc.trufflePoints > hc.syndicatePoints;

@@ -96,6 +96,13 @@ export interface Day2PairStanding {
   /** DQ'd pairs are ranked last and excluded from the champion. */
   disqualified: boolean;
   dqReason: string | null;
+  /**
+   * True when scoring is closed (day2Complete) but a partner is missing one or
+   * more stroke segments — historical seasons with lost/unrecorded scores. The
+   * total isn't computed (combinedNet is null); the UI shows "?". Distinct from
+   * a live season mid-round, where partial totals are still shown provisionally.
+   */
+  incomplete: boolean;
 }
 
 /**
@@ -106,10 +113,19 @@ export interface Day2PairStanding {
 export async function getDay2Leaderboard(
   seasonId: number,
 ): Promise<Day2PairStanding[]> {
-  const [pairs, scoring] = await Promise.all([
+  const [pairs, scoring, seasonRow] = await Promise.all([
     getDay2Teams(seasonId),
     getSeasonScoring(seasonId),
+    db
+      .select({ day2Complete: seasons.day2Complete })
+      .from(seasons)
+      .where(eq(seasons.id, seasonId))
+      .limit(1),
   ]);
+  // Once Day 2 scoring is closed, a partner missing a stroke segment means the
+  // score is genuinely absent (historical/lost), not just not-entered-yet — so
+  // we show "?" instead of a misleading partial total.
+  const finalized = !!seasonRow[0]?.day2Complete;
 
   // Stroke-play segments that count toward Day 2 standings (Day 1 + Day 2).
   // Day-3 match play has a segment for stroke allocation but never fills
@@ -129,7 +145,15 @@ export async function getDay2Leaderboard(
     const s2 = scoring.byPlayer.get(t.player2Id);
     const n1 = s1?.cumulativeNet ?? null;
     const n2 = s2?.cumulativeNet ?? null;
-    const combinedNet = n1 != null && n2 != null ? n1 + n2 : null;
+    const complete =
+      strokeSegCount > 0 &&
+      (s1?.segmentsScored ?? 0) >= strokeSegCount &&
+      (s2?.segmentsScored ?? 0) >= strokeSegCount;
+    // In a finalized season, don't compute a total for an incomplete pair — the
+    // missing scores are lost, not pending, so a partial sum would mislead.
+    const incomplete = finalized && !complete;
+    const combinedNet =
+      incomplete || n1 == null || n2 == null ? null : n1 + n2;
     return {
       id: t.id,
       name: t.name,
@@ -157,12 +181,10 @@ export async function getDay2Leaderboard(
       day2SegLabels,
       combinedNet,
       segmentsScored: (s1?.segmentsScored ?? 0) + (s2?.segmentsScored ?? 0),
-      complete:
-        strokeSegCount > 0 &&
-        (s1?.segmentsScored ?? 0) >= strokeSegCount &&
-        (s2?.segmentsScored ?? 0) >= strokeSegCount,
+      complete,
       disqualified: t.disqualified,
       dqReason: t.dqReason,
+      incomplete,
     };
   });
 

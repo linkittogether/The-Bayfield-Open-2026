@@ -43,6 +43,21 @@ export default async function Day1LeaderboardPage({
 
   return (
     <AppShell title="Day 1 Leaderboard" year={yr}>
+      {/* Partner picking open → top-priority call to action. */}
+      {!readOnly && state?.day1Complete && !state?.day1PickingComplete && (
+        <div className="mb-5 bg-accent border border-secondary/40 rounded-xl p-4">
+          <p className="font-semibold text-sm mb-0.5">Partner picking is open</p>
+          <p className="text-xs text-muted-foreground mb-3">
+            Day 1 is closed — 10th place picks first, down to 1st.
+          </p>
+          <Button asChild className="w-full h-11">
+            <Link href={`/${yr}/day1/picks`}>
+              <Users size={16} /> Go to Partner Pick
+            </Link>
+          </Button>
+        </div>
+      )}
+
       {/* Score entry is hidden once Day 1 scoring is closed. */}
       {!readOnly && !state?.day1Complete && (
         <div className="mb-5">
@@ -135,20 +150,6 @@ export default async function Day1LeaderboardPage({
 
       {!readOnly && isAdmin && !state?.day1Complete && lb.length > 0 && (
         <CompleteDay1 scored={lb.length} total={players.length} />
-      )}
-
-      {!readOnly && state?.day1Complete && !state?.day1PickingComplete && (
-        <div className="mt-5 bg-accent rounded-2xl p-4 border border-secondary/30">
-          <p className="font-semibold text-sm mb-1">Partner picking is open</p>
-          <p className="text-xs text-muted-foreground mb-3">
-            Day 1 is closed — 10th place picks first, down to 1st.
-          </p>
-          <Button asChild className="w-full bg-secondary text-white hover:bg-secondary/90">
-            <Link href={`/${yr}/day1/picks`}>
-              <Users size={16} /> Go to Partner Pick
-            </Link>
-          </Button>
-        </div>
       )}
 
       {state?.day1PickingComplete && (

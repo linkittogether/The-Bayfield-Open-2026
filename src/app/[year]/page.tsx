@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Check, ChevronRight, Flag, Settings, Shield, Trophy, Users } from "lucide-react";
 import { AdminCompleteButton } from "@/components/admin-complete-button";
 import { AppShell } from "@/components/app-shell";
+import { Countdown } from "@/components/countdown";
 import { CloseDay1Button } from "@/components/close-day1-button";
 import { LockDraftButton } from "@/components/lock-draft-button";
 import { cn } from "@/lib/utils";
@@ -114,6 +115,12 @@ export default async function HomePage({
           <p className="text-green-100 text-sm">
             {playerList.length} players · 3 days · All The Mushrooms
           </p>
+          {/* Countdown to tee-off, only on the live season (hides once it starts). */}
+          {!readOnly && (
+            <div className="mt-4 flex justify-center">
+              <Countdown />
+            </div>
+          )}
         </div>
       </div>
 

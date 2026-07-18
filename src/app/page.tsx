@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Countdown } from "@/components/countdown";
 import { getLandingSeason } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 
@@ -33,6 +34,10 @@ export default async function RootPage() {
         tournament. Players sign in with Google to enter their own scores and
         follow the live leaderboards, partner draft, and match-play results.
       </p>
+
+      <div className="mb-8">
+        <Countdown />
+      </div>
 
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <Link

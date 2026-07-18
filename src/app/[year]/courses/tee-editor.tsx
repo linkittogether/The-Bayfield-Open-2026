@@ -59,7 +59,12 @@ export function TeeEditor({
           {options.length === 0 && <option value="">No tees found</option>}
           {segment.availableTees.map((t) => (
             <option key={t.tee} value={t.tee}>
-              {t.tee} ({t.rating}/{t.slope})
+              {/* Grint's tee list gives 18-hole rating/slope; for a nine the
+                  value actually saved is round-scoped (shown below), so label
+                  these as 18h to avoid implying they're the stored figures. */}
+              {segment.holes === 9
+                ? `${t.tee} (18h ${t.rating}/${t.slope})`
+                : `${t.tee} (${t.rating}/${t.slope})`}
             </option>
           ))}
           {segment.tee && !segment.availableTees.some((t) => t.tee === segment.tee) && (
@@ -69,7 +74,7 @@ export function TeeEditor({
       </div>
       <p className="text-xs text-muted-foreground mt-2">
         {data.rating != null
-          ? `Rating ${data.rating} · Slope ${data.slope} · Par ${data.par}`
+          ? `${segment.holes === 9 ? "9-hole " : ""}Rating ${data.rating} · Slope ${data.slope} · Par ${data.par}`
           : "Course data not set"}
         {pending && " · updating…"}
       </p>

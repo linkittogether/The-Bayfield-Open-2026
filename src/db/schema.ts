@@ -43,6 +43,9 @@ export const seasons = pgTable(
     id: serial().primaryKey(),
     year: integer().notNull().unique(),
     isCurrent: boolean().notNull().default(false),
+    // Hidden seasons (e.g. dry-run sandboxes) are excluded from the season
+    // switcher and 404 on direct access.
+    hidden: boolean().notNull().default(false),
     currentDay: integer().notNull().default(1),
     day1Complete: boolean().notNull().default(false),
     day1PickingStarted: boolean().notNull().default(false),
@@ -78,6 +81,8 @@ export const players = pgTable("players", {
   pinHash: text().notNull(),
   // Google account email for SSO login; admin-assigned. Nullable until assigned.
   email: text().unique(),
+  // Tournament organizer. An admin is just a player with this flag set.
+  isAdmin: boolean().notNull().default(false),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp({ withTimezone: true })
     .notNull()
@@ -105,6 +110,10 @@ export const seasonRosters = pgTable(
     // The player's handicap index FOR THIS SEASON (indices change year to year).
     // players.handicap stays as the current/Grint convenience value.
     handicapIndex: numeric({ precision: 3, scale: 1, mode: "number" }),
+    // When true, this player's handicap was set manually and a Grint pull must
+    // NOT overwrite it. Set automatically when an admin edits the handicap;
+    // cleared by unchecking the lock in the player editor.
+    handicapLocked: boolean().notNull().default(false),
   },
   (t) => [unique().on(t.seasonId, t.playerId)],
 );
@@ -176,15 +185,6 @@ export const segmentScores = pgTable(
   },
   (t) => [unique().on(t.segmentId, t.playerId)],
 );
-
-export const admins = pgTable("admins", {
-  id: serial().primaryKey(),
-  username: text().notNull().unique(),
-  codeHash: text().notNull(),
-  // Google account email for SSO login. Nullable until assigned.
-  email: text().unique(),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-});
 
 export const day2Teams = pgTable("day2_teams", {
   id: serial().primaryKey(),

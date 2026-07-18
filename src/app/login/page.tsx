@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { GoogleLoginButton } from "./google-login-button";
@@ -53,6 +54,11 @@ export default async function LoginPage({
         <GoogleLoginButton />
         <p className="text-center text-xs text-muted-foreground mt-6">
           No account? Ask the tournament admin to register you.
+        </p>
+        <p className="text-center text-xs text-muted-foreground mt-2">
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Privacy Policy
+          </Link>
         </p>
       </div>
     </div>

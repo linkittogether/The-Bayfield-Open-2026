@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { requireAdmin, requireAdminOrSelf } from "./auth-guards";
 import { getActiveRoster } from "./players";
+import { notifySeasonChange } from "./realtime";
 import { getCurrentSeasonId } from "./seasons";
 import { getSeasonScoring } from "./scoring";
 
@@ -140,6 +141,7 @@ export async function submitDay1Score(input: z.input<typeof submitScoreSchema>) 
       set: { gross: data.grossScore },
     })
     .returning();
+  await notifySeasonChange(seasonId);
   return row;
 }
 
@@ -192,7 +194,7 @@ export async function submitDay1Pick(input: z.input<typeof submitPickSchema>) {
   if (picked.rank < 11)
     throw new Error("Can only pick players ranked 11 or below");
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [state] = await tx
       .select()
       .from(seasons)
@@ -232,6 +234,8 @@ export async function submitDay1Pick(input: z.input<typeof submitPickSchema>) {
 
     return { pickingComplete };
   });
+  await notifySeasonChange(seasonId);
+  return result;
 }
 
 export async function completeDay1() {
@@ -241,6 +245,7 @@ export async function completeDay1() {
     .update(seasons)
     .set({ day1Complete: true, currentDay: 1 })
     .where(eq(seasons.id, seasonId));
+  await notifySeasonChange(seasonId);
   return { ok: true };
 }
 
@@ -252,7 +257,7 @@ export async function completeDay1() {
 export async function undoLastDay1Pick() {
   await requireAdmin();
   const seasonId = await getCurrentSeasonId();
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [last] = await tx
       .select()
       .from(day2Teams)
@@ -279,4 +284,6 @@ export async function undoLastDay1Pick() {
 
     return { undonePickOrder: last.pickOrder };
   });
+  await notifySeasonChange(seasonId);
+  return result;
 }

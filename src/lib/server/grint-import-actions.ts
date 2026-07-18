@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { courses, players, segments } from "@/db/schema";
 import { requireAdmin, requireAdminOrSelf } from "./auth-guards";
+import { refreshRosterHandicaps } from "./grint";
 import { fetchRounds } from "./grint-rounds";
 import {
   getImportSegments,
@@ -16,6 +17,7 @@ import {
 } from "./grint-import";
 import { grintRefreshCount } from "./grint-rounds";
 import { getActiveRoster } from "./players";
+import { notifySeasonChange } from "./realtime";
 import { getCurrentSeasonId } from "./seasons";
 
 /**
@@ -145,10 +147,55 @@ export async function bulkPullDay(day: number): Promise<BulkPullSummary> {
     }
   }
 
+  if (written > 0) await notifySeasonChange(seasonId);
   return {
     day,
     written,
     segments: segs.map((s) => s.label),
+    perPlayer,
+    refreshed: grintRefreshCount() > refreshBefore,
+  };
+}
+
+/**
+ * Admin: pull fresh handicaps from The Grint for every roster member of the
+ * CURRENT season, writing each to that season's handicapIndex (and refreshing
+ * the global players.handicap). Reports per-player so unlinked / unestablished
+ * players can be handled by hand.
+ */
+export interface HandicapPullSummary {
+  updated: number;
+  perPlayer: {
+    name: string;
+    status: "updated" | "skipped";
+    note: string;
+  }[];
+  refreshed: boolean;
+}
+
+export async function bulkPullRosterHandicaps(): Promise<HandicapPullSummary> {
+  await requireAdmin();
+  const refreshBefore = grintRefreshCount();
+  const seasonId = await getCurrentSeasonId();
+
+  const { updated, skipped } = await refreshRosterHandicaps(seasonId);
+
+  const perPlayer: HandicapPullSummary["perPlayer"] = [
+    ...updated.map((u) => ({
+      name: u.name,
+      status: "updated" as const,
+      note: `${u.handicap}${u.source === "band-midpoint" ? " (est.)" : ""}`,
+    })),
+    ...skipped.map((s) => ({
+      name: s.name,
+      status: "skipped" as const,
+      note: s.reason,
+    })),
+  ].sort((a, b) => a.name.localeCompare(b.name));
+
+  if (updated.length > 0) await notifySeasonChange(seasonId);
+  return {
+    updated: updated.length,
     perPlayer,
     refreshed: grintRefreshCount() > refreshBefore,
   };

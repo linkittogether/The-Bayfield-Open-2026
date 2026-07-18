@@ -14,6 +14,7 @@ import {
 } from "@/db/schema";
 import { requireAdmin, requireAdminOrSelf } from "./auth-guards";
 import { getActiveRoster } from "./players";
+import { notifySeasonChange } from "./realtime";
 import { getCurrentSeasonId } from "./seasons";
 import { getSeasonScoring, getSegments } from "./scoring";
 
@@ -68,15 +69,21 @@ export interface Day2PairStanding {
   player1Handicap: number;
   player1Photo: string | null;
   player1Net: number | null;
+  player1TotalGross: number | null;
   player1Day1Net: number | null;
+  player1Day1Gross: number | null;
   player1Day2Nets: (number | null)[];
+  player1Day2Grosses: (number | null)[];
   player2Id: number;
   player2Name: string;
   player2Handicap: number;
   player2Photo: string | null;
   player2Net: number | null;
+  player2TotalGross: number | null;
   player2Day1Net: number | null;
+  player2Day1Gross: number | null;
   player2Day2Nets: (number | null)[];
+  player2Day2Grosses: (number | null)[];
   /** Column headers for the Day-2 segment nets (aligned to the *Day2Nets arrays). */
   day2SegLabels: string[];
   /** Sum of both partners' cumulative nets (Fri + Sat). Null until both have nets. */
@@ -126,15 +133,21 @@ export async function getDay2Leaderboard(
       player1Handicap: s1?.index ?? t.player1Handicap,
       player1Photo: t.player1Photo,
       player1Net: n1,
+      player1TotalGross: s1?.cumulativeGross ?? null,
       player1Day1Net: s1?.netByDay.get(1) ?? null,
+      player1Day1Gross: s1?.day1Gross ?? null,
       player1Day2Nets: day2Segs.map((seg) => s1?.netBySegment.get(seg.id) ?? null),
+      player1Day2Grosses: day2Segs.map((seg) => s1?.grossBySegment.get(seg.id) ?? null),
       player2Id: t.player2Id,
       player2Name: t.player2Name,
       player2Handicap: s2?.index ?? t.player2Handicap,
       player2Photo: t.player2Photo,
       player2Net: n2,
+      player2TotalGross: s2?.cumulativeGross ?? null,
       player2Day1Net: s2?.netByDay.get(1) ?? null,
+      player2Day1Gross: s2?.day1Gross ?? null,
       player2Day2Nets: day2Segs.map((seg) => s2?.netBySegment.get(seg.id) ?? null),
+      player2Day2Grosses: day2Segs.map((seg) => s2?.grossBySegment.get(seg.id) ?? null),
       day2SegLabels,
       combinedNet,
       segmentsScored: (s1?.segmentsScored ?? 0) + (s2?.segmentsScored ?? 0),
@@ -206,6 +219,7 @@ export async function submitSegmentScore(
       set: { gross: data.grossScore },
     })
     .returning();
+  await notifySeasonChange(seasonId);
   return row;
 }
 
@@ -280,6 +294,7 @@ export async function submitDay2DraftPick(
       set: { teamId: team.id, isCaptain: data.isCaptain },
     })
     .returning();
+  await notifySeasonChange(seasonId);
   return row;
 }
 
@@ -294,6 +309,7 @@ export async function removeDay2DraftPick(playerId: number) {
         eq(seasonRosters.playerId, playerId),
       ),
     );
+  await notifySeasonChange(seasonId);
   return { rowsAffected: result.count };
 }
 
@@ -339,5 +355,6 @@ export async function completeDay2Draft() {
     .update(seasons)
     .set({ day2Complete: true, day2DraftComplete: true, currentDay: 2 })
     .where(eq(seasons.id, seasonId));
+  await notifySeasonChange(seasonId);
   return { ok: true };
 }

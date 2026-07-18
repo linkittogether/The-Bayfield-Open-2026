@@ -23,7 +23,12 @@ export async function getCurrentSeasonId(): Promise<number> {
 }
 
 export async function listSeasons(): Promise<Season[]> {
-  return db.select().from(seasons).orderBy(desc(seasons.year));
+  // Hidden seasons (dry-run sandboxes) are excluded from the switcher.
+  return db
+    .select()
+    .from(seasons)
+    .where(eq(seasons.hidden, false))
+    .orderBy(desc(seasons.year));
 }
 
 export async function getSeasonByYear(year: number): Promise<Season | null> {
@@ -55,6 +60,8 @@ export async function getSeasonView(year: number) {
     getCurrentSeason(),
   ]);
   if (!viewed) notFound();
+  // A hidden season is only reachable if it's somehow the current one.
+  if (viewed.hidden && viewed.id !== current.id) notFound();
   return { viewed, current, readOnly: viewed.id !== current.id };
 }
 

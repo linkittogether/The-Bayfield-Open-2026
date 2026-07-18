@@ -3,6 +3,9 @@
 import { Check, Copy, Mail } from "lucide-react";
 import { useState } from "react";
 
+// Ironwood pro shop — recipient for the pairings email.
+const IRONWOOD_EMAIL = "proshop.ironwood@golfnorth.ca";
+
 /**
  * Admin tool: the Saturday pairings email to the course. Shows the drafted text
  * (selectable), a copy-to-clipboard button, and an "open in email app" link.
@@ -15,7 +18,7 @@ export function PairingsEmail({
   body: string;
 }) {
   const [copied, setCopied] = useState(false);
-  const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const mailto = `mailto:${IRONWOOD_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
   async function copy() {
     try {
@@ -33,6 +36,12 @@ export function PairingsEmail({
         <p className="font-semibold text-sm">Email pairings to the course</p>
         <p className="text-xs text-muted-foreground mt-0.5">
           Copy the text or open it in your email app.
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          To:{" "}
+          <a href={`mailto:${IRONWOOD_EMAIL}`} className="text-primary underline">
+            {IRONWOOD_EMAIL}
+          </a>
         </p>
       </div>
       <textarea

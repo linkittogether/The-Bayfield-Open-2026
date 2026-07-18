@@ -25,7 +25,8 @@ interface PlayerLite {
 export function PlayerEditor({ players }: { players: PlayerLite[] }) {
   const router = useRouter();
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editHcp, setEditHcp] = useState(0);
+  // Kept as a string so a decimal can be typed freely (e.g. "13." mid-entry).
+  const [editHcp, setEditHcp] = useState("0");
   const [editPin, setEditPin] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editAdmin, setEditAdmin] = useState(false);
@@ -35,7 +36,7 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
 
   function startEdit(p: PlayerLite) {
     setEditingId(p.id);
-    setEditHcp(p.handicap);
+    setEditHcp(String(p.handicap));
     setEditPin("");
     setEditEmail(p.email ?? "");
     setEditAdmin(p.isAdmin);
@@ -44,8 +45,17 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
   }
 
   // Changing the handicap auto-locks it (so a Grint pull won't revert it).
-  function changeHcp(next: number) {
-    setEditHcp(next);
+  // Values carry one decimal of precision, clamped to 0–54.
+  function nudgeHcp(delta: number) {
+    const clamped = Math.min(54, Math.max(0, (parseFloat(editHcp) || 0) + delta));
+    setEditHcp(String(Math.round(clamped * 10) / 10));
+    setEditLock(true);
+  }
+
+  function typeHcp(raw: string) {
+    // Digits + a single decimal point only.
+    const cleaned = raw.replace(/[^0-9.]/g, "").replace(/(\..*)\./g, "$1");
+    setEditHcp(cleaned);
     setEditLock(true);
   }
 
@@ -65,11 +75,15 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
           isAdmin?: boolean;
           handicapLocked?: boolean;
         } = {
-          handicap: editHcp,
+          handicap: Math.round((parseFloat(editHcp) || 0) * 10) / 10,
           email: editEmail.trim(),
           isAdmin: editAdmin,
           handicapLocked: editLock,
         };
+        if (update.handicap! < 0 || update.handicap! > 54) {
+          setMsg("Handicap must be between 0 and 54");
+          return;
+        }
         if (editPin) {
           if (!/^\d{4}$/.test(editPin)) {
             setMsg("PIN must be 4 digits");
@@ -174,16 +188,23 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => changeHcp(Math.max(0, editHcp - 1))}
-                      className="w-9 h-9 rounded-lg bg-white border border-border flex items-center justify-center"
+                      onClick={() => nudgeHcp(-1)}
+                      className="w-9 h-9 rounded-lg bg-white border border-border flex items-center justify-center flex-shrink-0"
                     >
                       –
                     </button>
-                    <span className="flex-1 text-center text-xl font-bold">{editHcp}</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editHcp}
+                      onChange={(e) => typeHcp(e.target.value)}
+                      aria-label="Handicap index"
+                      className="flex-1 min-w-0 h-9 text-center text-xl font-bold bg-white border border-border rounded-lg"
+                    />
                     <button
                       type="button"
-                      onClick={() => changeHcp(Math.min(54, editHcp + 1))}
-                      className="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center"
+                      onClick={() => nudgeHcp(1)}
+                      className="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center flex-shrink-0"
                     >
                       +
                     </button>

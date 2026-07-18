@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
+import { getCurrentUser } from "@/lib/session";
 import { requireAdmin } from "./auth-guards";
 
 export type Season = typeof seasons.$inferSelect;
@@ -60,8 +61,12 @@ export async function getSeasonView(year: number) {
     getCurrentSeason(),
   ]);
   if (!viewed) notFound();
-  // A hidden season is only reachable if it's somehow the current one.
-  if (viewed.hidden && viewed.id !== current.id) notFound();
+  // Hidden (dry-run) seasons stay out of the switcher (see listSeasons) but are
+  // reachable by direct URL for admins only — everyone else still 404s.
+  if (viewed.hidden && viewed.id !== current.id) {
+    const user = await getCurrentUser();
+    if (user?.kind !== "admin") notFound();
+  }
   return { viewed, current, readOnly: viewed.id !== current.id };
 }
 

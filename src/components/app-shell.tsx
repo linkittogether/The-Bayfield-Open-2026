@@ -2,7 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { LogIn } from "lucide-react";
 import { getCurrentUser } from "@/lib/session";
-import { getCurrentSeason, listSeasons } from "@/lib/server/seasons";
+import {
+  getCurrentSeason,
+  getSeasonByYear,
+  listSeasons,
+} from "@/lib/server/seasons";
 import { AuthButton } from "./auth-button";
 import { BottomNav } from "./bottom-nav";
 import { RealtimeRefresh } from "./realtime-refresh";
@@ -20,14 +24,16 @@ interface AppShellProps {
 }
 
 export async function AppShell({ children, title, year }: AppShellProps) {
-  const [user, seasonList, currentSeason] = await Promise.all([
+  const [user, seasonList, currentSeason, viewedSeason] = await Promise.all([
     getCurrentUser(),
     listSeasons(),
     getCurrentSeason(),
+    getSeasonByYear(year),
   ]);
 
   // The season whose data this page shows — used to scope the realtime channel.
-  const viewedSeasonId = seasonList.find((s) => s.year === year)?.id ?? currentSeason.id;
+  // Resolve the actual season (hidden dry-run seasons aren't in seasonList).
+  const viewedSeasonId = viewedSeason?.id ?? currentSeason.id;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

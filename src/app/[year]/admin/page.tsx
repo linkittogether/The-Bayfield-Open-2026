@@ -3,7 +3,11 @@ import { Flag, Lock, Plus, Shield } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BulkHandicapPull } from "@/components/bulk-handicap-pull";
 import { Button } from "@/components/ui/button";
-import { listPlayers, listSeasonHandicapLocks } from "@/lib/server/players";
+import {
+  getActiveRoster,
+  listPlayers,
+  listSeasonHandicapLocks,
+} from "@/lib/server/players";
 import { getCurrentSeason } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { PlayerEditor } from "./player-editor";
@@ -56,7 +60,12 @@ export default async function AdminPage({
     getCurrentSeason(),
     listPlayers(),
   ]);
-  const handicapLocks = await listSeasonHandicapLocks(season.id);
+  // "Registered" = this season's active field (roster minus absentees), not the
+  // global players table (which spans every season).
+  const [handicapLocks, activeRoster] = await Promise.all([
+    listSeasonHandicapLocks(season.id),
+    getActiveRoster(season.id),
+  ]);
 
   return (
     <AppShell title="Admin Panel" showBack backTo={`/${yr}`} year={yr}>
@@ -84,7 +93,7 @@ export default async function AdminPage({
           <h3 className="font-semibold mb-3">Tournament Status · {season.year}</h3>
           <StatusRows
             rows={[
-              ["Players registered", players.length],
+              ["Players registered", activeRoster.length],
               ["Current day", season.currentDay],
               ["Day 1 complete", season.day1Complete ? "Yes" : "No"],
               ["Partners picked", season.day1PickingComplete ? "Yes" : "No"],

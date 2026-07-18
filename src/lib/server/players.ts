@@ -1,6 +1,5 @@
 "use server";
 
-import bcrypt from "bcryptjs";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -13,9 +12,24 @@ const PIN_PATTERN = /^\d{4}$/;
 const createPlayerSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   handicap: z.coerce.number().min(0).default(0),
-  pin: z.string().regex(PIN_PATTERN, "PIN must be 4 digits"),
+  // Optional: PINs are assigned by an admin later, in the player editor.
+  pin: z.string().regex(PIN_PATTERN, "PIN must be 4 digits").optional(),
   photoUrl: z.string().nullable().optional(),
 });
+
+// A PIN identifies a player on its own at login, so it must be globally unique.
+// There's a DB unique constraint too (players.pin) — this gives a friendly error
+// before we hit it, and lets us scope the check to "other" players on update.
+async function assertPinUnique(pin: string, exceptPlayerId?: number) {
+  const [taken] = await db
+    .select({ id: players.id })
+    .from(players)
+    .where(eq(players.pin, pin))
+    .limit(1);
+  if (taken && taken.id !== exceptPlayerId) {
+    throw new Error("That PIN is already in use — choose a different one.");
+  }
+}
 
 const updatePlayerSchema = z
   .object({
@@ -39,9 +53,8 @@ const playerListColumns = {
   email: players.email,
   isAdmin: players.isAdmin,
   createdAt: players.createdAt,
-  hasPin: sql<boolean>`(${players.pinHash} IS NOT NULL AND ${players.pinHash} <> '')`.as(
-    "has_pin",
-  ),
+  // Plaintext login PIN (null = none). Only ever selected into admin-gated views.
+  pin: players.pin,
 };
 
 export async function listPlayers() {
@@ -101,13 +114,13 @@ export async function getPlayer(id: number) {
 export async function createPlayer(input: z.input<typeof createPlayerSchema>) {
   await requireAdmin();
   const data = createPlayerSchema.parse(input);
-  const pinHash = await bcrypt.hash(data.pin, 12);
+  if (data.pin) await assertPinUnique(data.pin);
   const [row] = await db
     .insert(players)
     .values({
       name: data.name,
       handicap: data.handicap,
-      pinHash,
+      pin: data.pin ?? null,
       photoUrl: data.photoUrl ?? null,
     })
     .returning({
@@ -130,7 +143,10 @@ export async function updatePlayer(
   if (data.name !== undefined) update.name = data.name;
   if (data.handicap !== undefined) update.handicap = data.handicap;
   if (data.photoUrl !== undefined) update.photoUrl = data.photoUrl;
-  if (data.pin !== undefined) update.pinHash = await bcrypt.hash(data.pin, 12);
+  if (data.pin !== undefined) {
+    await assertPinUnique(data.pin, id);
+    update.pin = data.pin;
+  }
   if (data.email !== undefined)
     update.email = data.email ? data.email.toLowerCase() : null;
   if (data.isAdmin !== undefined) update.isAdmin = data.isAdmin;
@@ -218,7 +234,6 @@ export async function createPlayerFromForm(formData: FormData) {
   return createPlayer({
     name: String(formData.get("name") ?? ""),
     handicap: Number(formData.get("handicap") ?? 0),
-    pin: String(formData.get("pin") ?? ""),
     photoUrl,
   });
 }

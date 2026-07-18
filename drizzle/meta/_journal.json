@@ -120,6 +120,20 @@
       "when": 1784373230527,
       "tag": "0016_moaning_marauders",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784384656552,
+      "tag": "0017_drop_pin_hash",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784384683439,
+      "tag": "0018_add_pin",
+      "breakpoints": true
     }
   ]
 }

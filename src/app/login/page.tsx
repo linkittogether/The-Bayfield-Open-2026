@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/session";
 import { GoogleLoginButton } from "./google-login-button";
+import { PinLoginForm } from "./pin-login-form";
 
 export const metadata = { title: "Log in · Bayfield Open" };
 
@@ -52,6 +53,7 @@ export default async function LoginPage({
           </div>
         )}
         <GoogleLoginButton />
+        <PinLoginForm />
         <p className="text-center text-xs text-muted-foreground mt-6">
           No account? Ask the tournament admin to register you.
         </p>

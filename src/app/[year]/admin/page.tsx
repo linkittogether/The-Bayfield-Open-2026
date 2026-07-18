@@ -101,7 +101,7 @@ export default async function AdminPage({
             name: p.name,
             photoUrl: p.photoUrl,
             handicap: p.handicap,
-            hasPin: p.hasPin,
+            pin: p.pin,
             email: p.email,
             isAdmin: p.isAdmin,
             handicapLocked: handicapLocks.get(p.id) ?? false,

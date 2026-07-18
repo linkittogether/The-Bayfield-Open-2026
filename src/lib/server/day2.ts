@@ -313,6 +313,21 @@ export async function removeDay2DraftPick(playerId: number) {
   return { rowsAffected: result.count };
 }
 
+/**
+ * Admin: close Day 2 stroke-play scoring. Independent of the Match Play Draft
+ * (see completeDay2Draft) — this just records that the Pairs competition is final.
+ */
+export async function completeDay2() {
+  await requireAdmin();
+  const seasonId = await getCurrentSeasonId();
+  await db
+    .update(seasons)
+    .set({ day2Complete: true, currentDay: 2 })
+    .where(eq(seasons.id, seasonId));
+  await notifySeasonChange(seasonId);
+  return { ok: true };
+}
+
 export async function completeDay2Draft() {
   await requireAdmin();
   const seasonId = await getCurrentSeasonId();
@@ -353,7 +368,7 @@ export async function completeDay2Draft() {
 
   await db
     .update(seasons)
-    .set({ day2Complete: true, day2DraftComplete: true, currentDay: 2 })
+    .set({ day2DraftComplete: true, currentDay: 2 })
     .where(eq(seasons.id, seasonId));
   await notifySeasonChange(seasonId);
   return { ok: true };

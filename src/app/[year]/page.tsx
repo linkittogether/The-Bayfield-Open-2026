@@ -1,14 +1,24 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronRight, Flag, Settings, Shield, Trophy, Users } from "lucide-react";
+import { AdminCompleteButton } from "@/components/admin-complete-button";
 import { AppShell } from "@/components/app-shell";
 import { CloseDay1Button } from "@/components/close-day1-button";
 import { cn } from "@/lib/utils";
 import { formatNet } from "@/lib/format";
 import { getActiveRoster } from "@/lib/server/players";
-import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
-import { getDay2Leaderboard } from "@/lib/server/day2";
-import { getDay3Matches } from "@/lib/server/day3";
+import {
+  completeDay1,
+  completePartnerDraft,
+  getDay1Leaderboard,
+  getDay1PicksOverview,
+} from "@/lib/server/day1";
+import {
+  completeDay2,
+  completeDay2Draft,
+  getDay2Leaderboard,
+} from "@/lib/server/day2";
+import { completeDay3, getDay3Matches } from "@/lib/server/day3";
 import { getCourseNamesByDay } from "@/lib/server/courses";
 import { getSeasonState } from "@/lib/server/tournament";
 import { getSeasonView } from "@/lib/server/seasons";
@@ -39,6 +49,9 @@ export default async function HomePage({
     courseNames.get(day) ?? fallback;
 
   const isAdmin = user?.kind === "admin";
+  // Admins can manually close out each stage, but only for the active season
+  // (readOnly is true when viewing a past season).
+  const canAdminComplete = isAdmin && !readOnly;
   const userId = user?.kind === "player" ? user.player.id : null;
   // All Day-2 stroke rounds scored for every pair → the Day 3 team draft opens.
   const day2AllScored = day2Lb.length > 0 && day2Lb.every((e) => e.complete);
@@ -212,6 +225,9 @@ export default async function HomePage({
 
       <div className="flex flex-col gap-3 mb-5">
         <DayCard day={1} title={`Day 1 — ${dayLabel(1, "Just You")}`} subtitle="9 holes · Solo, net" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
+        {canAdminComplete && !state?.day1Complete && (
+          <AdminCompleteButton action={completeDay1} label="Mark Day 1 complete" confirmLabel="Close Day 1" />
+        )}
         {state?.day1Complete && (
           <Link href={`/${yr}/day1/picks`} className="-mt-1 ml-8">
             <div
@@ -241,7 +257,13 @@ export default async function HomePage({
             </div>
           </Link>
         )}
+        {canAdminComplete && state?.day1Complete && !state?.day1PickingComplete && (
+          <AdminCompleteButton action={completePartnerDraft} label="Mark Partner Draft complete" confirmLabel="Set teams" indent />
+        )}
         <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
+        {canAdminComplete && state?.day1PickingComplete && !state?.day2Complete && (
+          <AdminCompleteButton action={completeDay2} label="Mark Day 2 complete" confirmLabel="Close Day 2" />
+        )}
         {day2AllScored && (
           <Link href={`/${yr}/day2/draft`} className="-mt-1 ml-8">
             <div
@@ -267,7 +289,13 @@ export default async function HomePage({
             </div>
           </Link>
         )}
+        {canAdminComplete && day2AllScored && !state?.day2DraftComplete && (
+          <AdminCompleteButton action={completeDay2Draft} label="Mark Match Play Draft complete" confirmLabel="Draft teams" indent />
+        )}
         <DayCard day={3} title={`Day 3 — ${dayLabel(3, "10 v 10")}`} subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
+        {canAdminComplete && state?.day2DraftComplete && !state?.day3Complete && (
+          <AdminCompleteButton action={completeDay3} label="Mark Day 3 complete" confirmLabel="Finalize Huron Cup" />
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-5">
@@ -371,7 +399,7 @@ function computeNextStep(args: {
     args;
   if (!state) return null;
 
-  if (!state.day3Complete && (state.day2Complete || state.day2DraftComplete)) {
+  if (!state.day3Complete && state.day2DraftComplete) {
     if (matches && matches.length > 0 && userId) {
       const myMatch = matches.find(
         (m) => m.trufflePlayerId === userId || m.syndicatePlayerId === userId,
@@ -413,7 +441,7 @@ function computeNextStep(args: {
     };
   }
 
-  if (state.day1PickingComplete && !state.day2Complete && !state.day2DraftComplete) {
+  if (state.day1PickingComplete && !state.day2DraftComplete) {
     // All Day-2 rounds are in → the next step is drafting the Day 3 teams.
     if (day2AllScored) {
       return {

@@ -250,6 +250,26 @@ export async function completeDay1() {
 }
 
 /**
+ * Admin: close the partner draft. Picking also auto-completes when the last pick
+ * (rank 1) is made; this lets an admin finalize it manually (e.g. a short field
+ * where not every rank picks). Clears any pending picker turn.
+ */
+export async function completePartnerDraft() {
+  await requireAdmin();
+  const seasonId = await getCurrentSeasonId();
+  await db
+    .update(seasons)
+    .set({
+      day1PickingStarted: true,
+      day1PickingComplete: true,
+      nextPickerRank: null,
+    })
+    .where(eq(seasons.id, seasonId));
+  await notifySeasonChange(seasonId);
+  return { ok: true };
+}
+
+/**
  * Admin: undo the single MOST RECENT partner pick. Picking descends from rank 10
  * to 1, so the latest pick is the team with the smallest pickOrder. Reopens that
  * picker's turn. Call repeatedly to walk back further (sequential undo).

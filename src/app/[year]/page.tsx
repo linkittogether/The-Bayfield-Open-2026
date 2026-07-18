@@ -50,8 +50,11 @@ export default async function HomePage({
   const userId = user?.kind === "player" ? user.player.id : null;
   // All Day-2 stroke rounds scored for every pair → the Day 3 team draft opens.
   const day2AllScored = day2Lb.length > 0 && day2Lb.every((e) => e.complete);
-  // Once the season is complete, the stage stack is replaced by the two trophies.
-  const seasonComplete = !!state?.day3Complete;
+  // Once the season is complete, the stage stack is replaced by the trophies.
+  // Pre-match-play seasons (no Huron Cup) are complete when Day 2 is closed;
+  // match-play seasons finish with Day 3.
+  const preMatchPlay = state?.matchPlay === false;
+  const seasonComplete = preMatchPlay ? !!state?.day2Complete : !!state?.day3Complete;
   const pairsChamp = day2Lb[0] ?? null;
   const hc = day3Lb.summary;
   const huronTie = hc.trufflePoints === hc.syndicatePoints;
@@ -270,20 +273,23 @@ export default async function HomePage({
             }
             tone="gold"
           />
-          <ChampionTile
-            href={`/${yr}/day3/leaderboard`}
-            eyebrow="Huron Cup"
-            emoji={huronTie ? "🤝" : truffleWonCup ? "🐗" : "🍄"}
-            title={
-              huronTie
-                ? "It's a Draw"
-                : truffleWonCup
-                  ? "Truffle Hogs"
-                  : "Mycelium Syndicate"
-            }
-            subtitle={`${hc.trufflePoints}–${hc.syndicatePoints} · Huron Cup ${season.year}`}
-            tone={huronTie ? "muted" : truffleWonCup ? "truffle" : "syndicate"}
-          />
+          {/* The Huron Cup only exists for match-play seasons (2025+). */}
+          {!preMatchPlay && (
+            <ChampionTile
+              href={`/${yr}/day3/leaderboard`}
+              eyebrow="Huron Cup"
+              emoji={huronTie ? "🤝" : truffleWonCup ? "🐗" : "🍄"}
+              title={
+                huronTie
+                  ? "It's a Draw"
+                  : truffleWonCup
+                    ? "Truffle Hogs"
+                    : "Mycelium Syndicate"
+              }
+              subtitle={`${hc.trufflePoints}–${hc.syndicatePoints} · Huron Cup ${season.year}`}
+              tone={huronTie ? "muted" : truffleWonCup ? "truffle" : "syndicate"}
+            />
+          )}
         </div>
       ) : (
       <div className="flex flex-col gap-3 mb-5">
@@ -541,6 +547,11 @@ function computeNextStep(args: {
     day3AllDecided,
   } = args;
   if (!state) return null;
+
+  // Pre-match-play seasons (no Huron Cup) end after Day 2 — never advance to the
+  // match-play draft or Day 3. Once Day 2 scoring is closed, there is no next
+  // step (the Pairs Champion tile is the season summary).
+  if (state.matchPlay === false && state.day2Complete) return null;
 
   if (!state.day3Complete && state.day2DraftComplete) {
     // Admin can finalize the Huron Cup once every match is decided.

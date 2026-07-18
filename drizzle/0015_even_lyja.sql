@@ -1,0 +1,1 @@
+ALTER TABLE "seasons" ADD COLUMN "hidden" boolean DEFAULT false NOT NULL;

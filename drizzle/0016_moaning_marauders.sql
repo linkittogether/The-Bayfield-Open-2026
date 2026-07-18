@@ -1,0 +1,1 @@
+ALTER TABLE "season_rosters" ADD COLUMN "handicap_locked" boolean DEFAULT false NOT NULL;

@@ -33,7 +33,7 @@ export async function AppShell({ children, title, year }: AppShellProps) {
     <div className="min-h-screen flex flex-col bg-background">
       <RealtimeRefresh seasonId={viewedSeasonId} />
       <header className="bg-primary text-white sticky top-0 z-50 shadow-lg">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-2 sm:gap-3">
           <Link href={`/${year}`} className="flex-shrink-0" aria-label="Go to home">
             <Image
               src="/logo.png"
@@ -46,10 +46,10 @@ export async function AppShell({ children, title, year }: AppShellProps) {
             />
           </Link>
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <Link
               href={`/${year}`}
-              className="text-xs uppercase tracking-widest text-green-200 font-medium hover:text-white transition-colors"
+              className="block text-xs uppercase tracking-widest text-green-200 font-medium hover:text-white transition-colors"
             >
               The Bayfield Open
             </Link>
@@ -69,7 +69,7 @@ export async function AppShell({ children, title, year }: AppShellProps) {
           )}
 
           {user ? (
-            <AuthButton kind={user.kind} name={user.kind === "admin" ? user.admin.username : user.player.name} />
+            <AuthButton kind={user.kind} name={user.player.name} />
           ) : (
             <Link
               href="/login"

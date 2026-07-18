@@ -7,7 +7,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 
 export function SeasonSelector({
@@ -40,7 +39,13 @@ export function SeasonSelector({
         className="flex-shrink-0 border-white/25 bg-white/15 text-white data-placeholder:text-white/80 disabled:opacity-100"
         disabled={pending}
       >
-        <SelectValue />
+        {/* Year only on mobile to save header width; full label from sm up.
+            The dropdown items still show "· current". */}
+        <span className="sm:hidden">{viewedYear}</span>
+        <span className="hidden sm:inline">
+          {viewedYear}
+          {viewedYear === currentYear ? " · current" : ""}
+        </span>
       </SelectTrigger>
       <SelectContent>
         {years.map((y) => (

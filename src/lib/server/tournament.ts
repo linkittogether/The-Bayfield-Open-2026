@@ -7,7 +7,6 @@ import {
   day2Teams,
   day3Holes,
   day3Matches,
-  seasonRosters,
   seasons,
   segmentScores,
   segments,
@@ -55,15 +54,17 @@ export async function updateSeasonState(
   return row;
 }
 
-/** Deletes all results for one season and resets its state fields. */
-// Reset is too destructive for a live tournament — disabled. The UI no longer
-// renders it (admin/page.tsx); this guard also blocks direct server-action
-// calls. Flip to true to re-enable.
-const RESET_ENABLED = false;
-
+/**
+ * Clears a season's results back to a fresh state: deletes all stroke-play
+ * scores, Day 3 per-hole match results, partner pairings, and match-play
+ * matchups, then resets the season's day/completion flags. Team rosters
+ * (season_rosters) and players are preserved. Cannot be undone.
+ *
+ * Only allowed on the CURRENT season — assertCurrentSeason blocks past
+ * seasons even if the action is invoked directly.
+ */
 export async function resetSeason(seasonId: number) {
   await requireAdmin();
-  if (!RESET_ENABLED) throw new Error("Tournament reset is disabled.");
   await assertCurrentSeason(seasonId);
   await db.transaction(async (tx) => {
     const matchIds = tx
@@ -81,7 +82,8 @@ export async function resetSeason(seasonId: number) {
       .from(segments)
       .where(eq(segments.seasonId, seasonId));
     await tx.delete(segmentScores).where(inArray(segmentScores.segmentId, segIds));
-    await tx.delete(seasonRosters).where(eq(seasonRosters.seasonId, seasonId));
+
+    // Team rosters (season_rosters) are intentionally KEPT.
 
     await tx
       .update(seasons)
@@ -97,5 +99,6 @@ export async function resetSeason(seasonId: number) {
       })
       .where(eq(seasons.id, seasonId));
   });
+  await notifySeasonChange(seasonId);
   return { ok: true };
 }

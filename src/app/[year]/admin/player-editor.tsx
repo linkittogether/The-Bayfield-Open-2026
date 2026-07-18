@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, Lock, Mail, Pencil, User, X } from "lucide-react";
+import { Check, Lock, Mail, Pencil, Shield, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,9 @@ interface PlayerLite {
   handicap: number;
   hasPin: boolean;
   email: string | null;
+  isAdmin: boolean;
+  /** Current season: handicap is manually pinned (protected from Grint pulls). */
+  handicapLocked: boolean;
 }
 
 export function PlayerEditor({ players }: { players: PlayerLite[] }) {
@@ -25,6 +28,8 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
   const [editHcp, setEditHcp] = useState(0);
   const [editPin, setEditPin] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editAdmin, setEditAdmin] = useState(false);
+  const [editLock, setEditLock] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -33,7 +38,15 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
     setEditHcp(p.handicap);
     setEditPin("");
     setEditEmail(p.email ?? "");
+    setEditAdmin(p.isAdmin);
+    setEditLock(p.handicapLocked);
     setMsg(null);
+  }
+
+  // Changing the handicap auto-locks it (so a Grint pull won't revert it).
+  function changeHcp(next: number) {
+    setEditHcp(next);
+    setEditLock(true);
   }
 
   function cancel() {
@@ -45,9 +58,17 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
     setMsg(null);
     startTransition(async () => {
       try {
-        const update: { handicap?: number; pin?: string; email?: string } = {
+        const update: {
+          handicap?: number;
+          pin?: string;
+          email?: string;
+          isAdmin?: boolean;
+          handicapLocked?: boolean;
+        } = {
           handicap: editHcp,
           email: editEmail.trim(),
+          isAdmin: editAdmin,
+          handicapLocked: editLock,
         };
         if (editPin) {
           if (!/^\d{4}$/.test(editPin)) {
@@ -90,7 +111,12 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm truncate">{p.name}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>HCP {p.handicap}</span>
+                  <span className="flex items-center gap-0.5">
+                    HCP {p.handicap}
+                    {p.handicapLocked && (
+                      <Lock size={10} className="text-primary" aria-label="Handicap locked" />
+                    )}
+                  </span>
                   <span>·</span>
                   <span
                     className={cn(
@@ -111,6 +137,15 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                     <Mail size={10} />
                     {p.email ? "Email set" : "No email"}
                   </span>
+                  {p.isAdmin && (
+                    <>
+                      <span>·</span>
+                      <span className="flex items-center gap-0.5 text-primary font-medium">
+                        <Shield size={10} />
+                        Admin
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
               {editingId === p.id ? (
@@ -139,7 +174,7 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={() => setEditHcp((h) => Math.max(0, h - 1))}
+                      onClick={() => changeHcp(Math.max(0, editHcp - 1))}
                       className="w-9 h-9 rounded-lg bg-white border border-border flex items-center justify-center"
                     >
                       –
@@ -147,12 +182,25 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                     <span className="flex-1 text-center text-xl font-bold">{editHcp}</span>
                     <button
                       type="button"
-                      onClick={() => setEditHcp((h) => Math.min(54, h + 1))}
+                      onClick={() => changeHcp(Math.min(54, editHcp + 1))}
                       className="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center"
                     >
                       +
                     </button>
                   </div>
+                  <label className="mt-2 flex items-center gap-2 text-xs cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editLock}
+                      onChange={(e) => setEditLock(e.target.checked)}
+                      className="w-4 h-4 accent-primary"
+                    />
+                    <Lock
+                      size={12}
+                      className={editLock ? "text-primary" : "text-muted-foreground"}
+                    />
+                    Lock handicap — skip Grint pulls
+                  </label>
                 </div>
                 <div>
                   <Label className="text-xs mb-1 block">
@@ -180,6 +228,19 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                     className="text-center tracking-widest"
                   />
                 </div>
+                <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={editAdmin}
+                    onChange={(e) => setEditAdmin(e.target.checked)}
+                    className="w-4 h-4 accent-primary"
+                  />
+                  <Shield
+                    size={13}
+                    className={editAdmin ? "text-primary" : "text-muted-foreground"}
+                  />
+                  Admin (tournament organizer)
+                </label>
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={cancel} className="flex-1">
                     Cancel

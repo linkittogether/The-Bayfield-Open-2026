@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Lock, Plus, Shield } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { BulkHandicapPull } from "@/components/bulk-handicap-pull";
 import { Button } from "@/components/ui/button";
-import { listAdmins } from "@/lib/server/admins";
-import { listPlayers } from "@/lib/server/players";
+import { listPlayers, listSeasonHandicapLocks } from "@/lib/server/players";
 import { getCurrentSeason } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
-import { AdminManager } from "./admin-manager";
 import { PlayerEditor } from "./player-editor";
+import { ResetButton } from "./reset-button";
 import { StatusRows } from "./status-rows";
 
 export const metadata = { title: "Admin Panel" };
@@ -52,11 +52,11 @@ export default async function AdminPage({
     );
   }
 
-  const [season, players, admins] = await Promise.all([
+  const [season, players] = await Promise.all([
     getCurrentSeason(),
     listPlayers(),
-    listAdmins(),
   ]);
+  const handicapLocks = await listSeasonHandicapLocks(season.id);
 
   return (
     <AppShell title="Admin Panel" showBack backTo={`/${yr}`} year={yr}>
@@ -64,7 +64,7 @@ export default async function AdminPage({
         <div className="flex items-center gap-2 bg-primary/10 rounded-xl px-4 py-3">
           <Shield size={18} className="text-primary" />
           <span className="text-sm font-semibold text-primary">
-            Logged in as admin: {user.admin.email ?? user.admin.username}
+            Logged in as admin: {user.player.email ?? user.player.name}
           </span>
         </div>
 
@@ -97,10 +97,18 @@ export default async function AdminPage({
             handicap: p.handicap,
             hasPin: p.hasPin,
             email: p.email,
+            isAdmin: p.isAdmin,
+            handicapLocked: handicapLocks.get(p.id) ?? false,
           }))}
         />
 
-        <AdminManager admins={admins.map((a) => ({ id: a.id, username: a.username }))} />
+        {/* Handicap refresh + reset both act on the current season only. */}
+        {yr === season.year && <BulkHandicapPull />}
+
+        {/* Reset is only offered on the current season. The admin page always
+            loads the current season, so this appears when the viewed year
+            matches it; the server action re-checks via assertCurrentSeason. */}
+        {yr === season.year && <ResetButton seasonId={season.id} />}
       </div>
     </AppShell>
   );

@@ -18,6 +18,9 @@ const playfair = Playfair_Display({
 export const metadata: Metadata = {
   title: "The Bayfield Open",
   description: "Bayfield Open — golf tournament tracker",
+  verification: {
+    google: "PYGYzsDudMT-dOsjUa9Nqa0n-mjKVbmA00cDsykR8Ks",
+  },
 };
 
 export const viewport: Viewport = {

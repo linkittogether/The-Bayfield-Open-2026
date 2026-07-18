@@ -35,7 +35,9 @@ export function ResetButton({ seasonId }: { seasonId: number }) {
         <div>
           <p className="font-semibold text-red-800">Reset Tournament</p>
           <p className="text-sm text-red-600 mt-0.5">
-            Deletes all scores, teams, matches, and holes. Players are preserved. Cannot be undone.
+            Deletes all scores, partner pairings, and match-play matchups, and
+            resets the tournament to Day 1. Team rosters and players are
+            preserved. Cannot be undone.
           </p>
         </div>
       </div>

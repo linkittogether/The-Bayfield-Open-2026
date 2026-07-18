@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { players, seasonRosters } from "@/db/schema";
+import { players, seasonRosters, seasons } from "@/db/schema";
 import { requireAdmin } from "./auth-guards";
 import { deletePlayerPhoto, uploadPlayerPhoto } from "./photos";
 
@@ -25,6 +25,9 @@ const updatePlayerSchema = z
     photoUrl: z.string().nullable().optional(),
     // Google SSO email. Empty string clears it.
     email: z.union([z.email(), z.literal("")]).optional(),
+    isAdmin: z.boolean().optional(),
+    // Pin the current season's handicap so a Grint pull won't overwrite it.
+    handicapLocked: z.boolean().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, "At least one field required");
 
@@ -34,6 +37,7 @@ const playerListColumns = {
   photoUrl: players.photoUrl,
   handicap: players.handicap,
   email: players.email,
+  isAdmin: players.isAdmin,
   createdAt: players.createdAt,
   hasPin: sql<boolean>`(${players.pinHash} IS NOT NULL AND ${players.pinHash} <> '')`.as(
     "has_pin",
@@ -129,6 +133,7 @@ export async function updatePlayer(
   if (data.pin !== undefined) update.pinHash = await bcrypt.hash(data.pin, 12);
   if (data.email !== undefined)
     update.email = data.email ? data.email.toLowerCase() : null;
+  if (data.isAdmin !== undefined) update.isAdmin = data.isAdmin;
 
   const [row] = await db
     .update(players)
@@ -140,10 +145,53 @@ export async function updatePlayer(
       photoUrl: players.photoUrl,
       handicap: players.handicap,
       email: players.email,
+      isAdmin: players.isAdmin,
       createdAt: players.createdAt,
     });
   if (!row) throw new Error("Player not found");
+
+  // Sync the CURRENT season's roster row. Scoring reads
+  // seasonRosters.handicapIndex (not players.handicap), so a manual handicap
+  // edit must land there too — and a manual set should LOCK the value so a
+  // later Grint pull doesn't silently overwrite it.
+  const rosterSet: Partial<typeof seasonRosters.$inferInsert> = {};
+  if (data.handicap !== undefined) {
+    rosterSet.handicapIndex = data.handicap;
+    // Auto-lock on manual edit unless the caller explicitly sets the flag.
+    rosterSet.handicapLocked = data.handicapLocked ?? true;
+  } else if (data.handicapLocked !== undefined) {
+    rosterSet.handicapLocked = data.handicapLocked;
+  }
+  if (Object.keys(rosterSet).length > 0) {
+    await db
+      .update(seasonRosters)
+      .set(rosterSet)
+      .where(
+        and(
+          eq(seasonRosters.playerId, id),
+          eq(
+            seasonRosters.seasonId,
+            sql`(SELECT ${seasons.id} FROM ${seasons} WHERE ${seasons.isCurrent} LIMIT 1)`,
+          ),
+        ),
+      );
+  }
+
   return row;
+}
+
+/** Per-player handicap-lock state for one season (for the admin editor). */
+export async function listSeasonHandicapLocks(
+  seasonId: number,
+): Promise<Map<number, boolean>> {
+  const rows = await db
+    .select({
+      playerId: seasonRosters.playerId,
+      locked: seasonRosters.handicapLocked,
+    })
+    .from(seasonRosters)
+    .where(eq(seasonRosters.seasonId, seasonId));
+  return new Map(rows.map((r) => [r.playerId, r.locked]));
 }
 
 export async function deletePlayer(id: number) {

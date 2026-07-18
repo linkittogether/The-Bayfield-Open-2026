@@ -16,6 +16,7 @@ import {
 import {
   completeDay2,
   completeDay2Draft,
+  getDay2DraftOverview,
   getDay2Leaderboard,
 } from "@/lib/server/day2";
 import {
@@ -36,7 +37,7 @@ export default async function HomePage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
-  const [user, state, playerList, day1Lb, picks, matches, day2Lb, day3Lb, courseNames] =
+  const [user, state, playerList, day1Lb, picks, matches, day2Lb, day3Lb, draftOverview, courseNames] =
     await Promise.all([
       getCurrentUser(),
       getSeasonState(season.id),
@@ -46,6 +47,7 @@ export default async function HomePage({
       getDay3Matches(season.id),
       getDay2Leaderboard(season.id),
       getDay3Leaderboard(season.id),
+      getDay2DraftOverview(season.id),
       getCourseNamesByDay(season.id),
     ]);
   // Prefer the season's course name for each day's card; fall back to the
@@ -66,6 +68,27 @@ export default async function HomePage({
   const hc = day3Lb.summary;
   const huronTie = hc.trufflePoints === hc.syndicatePoints;
   const truffleWonCup = hc.trufflePoints > hc.syndicatePoints;
+
+  // Per-stage "ready to close out" gates — a stage's admin completion button only
+  // appears once that stage can actually be completed, not merely "not yet done".
+  const day1AllScored =
+    playerList.length > 0 && day1Lb.length >= playerList.length;
+  // Partner picking: every eligible partner (bottom half) has been chosen.
+  const partnerDraftReady =
+    !!state?.day1PickingStarted && picks.available.length === 0;
+  // Match Play Draft: every Day-1 scorer is assigned to a team, both teams active
+  // (mirrors the validation inside completeDay2Draft).
+  const assignedIds = new Set(draftOverview.selected.map((s) => s.playerId));
+  const activeDraftTeams = new Set(
+    draftOverview.selected.filter((s) => !s.absent).map((s) => s.teamName),
+  );
+  const matchDraftReady =
+    day1Lb.length > 0 &&
+    day1Lb.every((e) => assignedIds.has(e.id)) &&
+    activeDraftTeams.size >= 2;
+  // Day 3: every match has been decided (match play closes out before 18 holes).
+  const day3AllDecided =
+    matches.length > 0 && matches.every((m) => m.status === "final");
   const nextStep = readOnly
     ? null
     : computeNextStep({
@@ -270,8 +293,8 @@ export default async function HomePage({
       ) : (
       <div className="flex flex-col gap-3 mb-5">
         <DayCard day={1} title={`Day 1 — ${dayLabel(1, "Just You")}`} subtitle="9 holes · Solo, net" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
-        {canAdminComplete && !state?.day1Complete && (
-          <AdminCompleteButton action={completeDay1} label="Mark Day 1 complete" confirmLabel="Close Day 1" />
+        {canAdminComplete && !state?.day1Complete && day1AllScored && (
+          <AdminCompleteButton action={completeDay1} label="Close Day 1 scoring" confirmLabel="Close scoring & start picks" />
         )}
         {state?.day1Complete && (
           <Link href={`/${yr}/day1/picks`} className="-mt-1 ml-8">
@@ -302,12 +325,12 @@ export default async function HomePage({
             </div>
           </Link>
         )}
-        {canAdminComplete && state?.day1Complete && !state?.day1PickingComplete && (
-          <AdminCompleteButton action={completePartnerDraft} label="Mark Partner Draft complete" confirmLabel="Set teams" indent />
+        {canAdminComplete && state?.day1Complete && !state?.day1PickingComplete && partnerDraftReady && (
+          <AdminCompleteButton action={completePartnerDraft} label="Finalize Partner Draft" confirmLabel="Set teams" indent />
         )}
         <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
-        {canAdminComplete && state?.day1PickingComplete && !state?.day2Complete && (
-          <AdminCompleteButton action={completeDay2} label="Mark Day 2 complete" confirmLabel="Close Day 2" />
+        {canAdminComplete && state?.day1PickingComplete && !state?.day2Complete && day2AllScored && (
+          <AdminCompleteButton action={completeDay2} label="Close Day 2 scoring" confirmLabel="Close scoring" />
         )}
         {day2AllScored && (
           <Link href={`/${yr}/day2/draft`} className="-mt-1 ml-8">
@@ -334,12 +357,12 @@ export default async function HomePage({
             </div>
           </Link>
         )}
-        {canAdminComplete && day2AllScored && !state?.day2DraftComplete && (
-          <AdminCompleteButton action={completeDay2Draft} label="Mark Match Play Draft complete" confirmLabel="Draft teams" indent />
+        {canAdminComplete && day2AllScored && !state?.day2DraftComplete && matchDraftReady && (
+          <AdminCompleteButton action={completeDay2Draft} label="Finalize Match Play Draft" confirmLabel="Lock teams" indent />
         )}
         <DayCard day={3} title={`Day 3 — ${dayLabel(3, "10 v 10")}`} subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
-        {canAdminComplete && state?.day2DraftComplete && !state?.day3Complete && (
-          <AdminCompleteButton action={completeDay3} label="Mark Day 3 complete" confirmLabel="Finalize Huron Cup" />
+        {canAdminComplete && state?.day2DraftComplete && !state?.day3Complete && day3AllDecided && (
+          <AdminCompleteButton action={completeDay3} label="Complete Day 3" confirmLabel="Finalize Huron Cup" />
         )}
       </div>
       )}

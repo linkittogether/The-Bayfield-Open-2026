@@ -569,6 +569,20 @@ function computeNextStep(args: {
         urgent: true,
       };
     }
+    if (isAdmin) {
+      // Admin drives Day 2 like Day 1: an actionable score-entry prompt (not a
+      // passive "view leaderboard"). Once every pair is scored, the day2AllScored
+      // branch above advances to the Match Play Draft, and the Day 2 card shows
+      // its "Close Day 2 scoring" button.
+      return {
+        label: "Enter everyone's Day 2 scores",
+        sub: "27 holes · pull from The Grint or enter manually",
+        href: "/day2/scores",
+        emoji: "🤝",
+        urgent: true,
+        audience: "admin",
+      };
+    }
     if (userId) {
       return {
         label: "Enter your Day 2 score",

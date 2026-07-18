@@ -1,7 +1,9 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSeasonByYear } from "@/lib/server/seasons";
+import { getCurrentUser } from "@/lib/session";
 
-// Validates the /[year] segment is a real season (404s otherwise).
+// Gates every /[year] route: the tournament is private, so sign-in is required
+// to view any season. Also validates the /[year] segment is a real season.
 export default async function YearLayout({
   children,
   params,
@@ -10,7 +12,11 @@ export default async function YearLayout({
   params: Promise<{ year: string }>;
 }) {
   const { year } = await params;
-  const season = await getSeasonByYear(Number(year));
+  const [user, season] = await Promise.all([
+    getCurrentUser(),
+    getSeasonByYear(Number(year)),
+  ]);
+  if (!user) redirect("/login");
   if (!season) notFound();
   return <>{children}</>;
 }

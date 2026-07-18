@@ -38,14 +38,17 @@ export default async function Day1LeaderboardPage({
   const isAdmin = user?.kind === "admin";
   const scoredIds = new Set(lb.map((e) => e.id));
   const notScored = players.filter((p) => !scoredIds.has(p.id));
+  // The current person already has a Day-1 score → offer "Edit" instead of "Enter".
+  const iScored = user?.player.id != null && scoredIds.has(user.player.id);
 
   return (
     <AppShell title="Day 1 Leaderboard" year={yr}>
-      {!readOnly && (
+      {/* Score entry is hidden once Day 1 scoring is closed. */}
+      {!readOnly && !state?.day1Complete && (
         <div className="mb-5">
           <Button asChild className="w-full h-11">
             <Link href={`/${yr}/day1/scores`}>
-              <ClipboardList size={16} /> Enter Score
+              <ClipboardList size={16} /> {iScored ? "Edit Score" : "Enter Score"}
             </Link>
           </Button>
         </div>

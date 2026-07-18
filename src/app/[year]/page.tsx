@@ -338,8 +338,8 @@ export default async function HomePage({
         )}
         {/* Partner draft is locked from the "next step" tile (LockDraftButton),
             not a card button — keeps a single completion affordance. */}
-        <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
-        {day2AllScored && (
+        <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
+        {state?.day2Complete && (
           <Link href={`/${yr}/day2/draft`} className="-mt-1 ml-8">
             <div
               className={cn(

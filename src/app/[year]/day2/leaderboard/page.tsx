@@ -39,6 +39,19 @@ export default async function Day2LeaderboardPage({
   const champions = !!state?.day2Complete;
   // Surface the leader as soon as any pair has a combined net.
   const leader = lb[0]?.combinedNet != null ? lb[0] : null;
+  // Does the current person already have all their Day-2 grosses in? → "Edit".
+  const meId = user?.player.id ?? null;
+  const myEntry =
+    meId != null
+      ? lb.find((e) => e.player1Id === meId || e.player2Id === meId)
+      : null;
+  const myGrosses = myEntry
+    ? myEntry.player1Id === meId
+      ? myEntry.player1Day2Grosses
+      : myEntry.player2Day2Grosses
+    : null;
+  const iScored =
+    !!myGrosses && myGrosses.length > 0 && myGrosses.every((g) => g != null);
 
   return (
     <AppShell title="Day 2 Leaderboard" year={yr}>
@@ -67,11 +80,12 @@ export default async function Day2LeaderboardPage({
         </div>
       )}
 
-      {!readOnly && (
+      {/* Score entry is hidden once Day 2 scoring is closed. */}
+      {!readOnly && !champions && (
         <div className="mb-5">
           <Button asChild className="w-full h-11">
             <Link href={`/${yr}/day2/scores`}>
-              <ClipboardList size={16} /> Enter Score
+              <ClipboardList size={16} /> {iScored ? "Edit Score" : "Enter Score"}
             </Link>
           </Button>
         </div>

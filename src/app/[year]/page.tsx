@@ -564,15 +564,9 @@ function computeNextStep(args: {
     };
   }
 
-  if (state.day3Complete) {
-    return {
-      label: "See who won the Huron Cup",
-      sub: "Tournament complete — final results are in!",
-      href: "/day3/leaderboard",
-      emoji: "🏆",
-      urgent: false,
-    };
-  }
+  // Season complete → no "next step"; the Pairs/Huron Cup champion tiles are the
+  // summary (see the seasonComplete block in the page body).
+  if (state.day3Complete) return null;
 
   if (state.day1PickingComplete && !state.day2DraftComplete) {
     if (day2AllScored) {

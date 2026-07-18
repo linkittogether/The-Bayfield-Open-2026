@@ -33,7 +33,10 @@ export default async function Day3LeaderboardPage({
   const userId = user?.kind === "player" ? user.player.id : null;
   const allRoster = [...teams.truffleHogs, ...teams.myceliumSyndicate];
   const isCaptain = userId !== null && allRoster.some((p) => p.playerId === userId && p.isCaptain);
-  const canSetupMatches = !readOnly && (isAdmin || isCaptain);
+  // Setup is only offered until the matchups are finalized (day2DraftComplete);
+  // after that (and once Day 3 is complete) re-drafting would wipe scored matches.
+  const canSetupMatches =
+    !readOnly && (isAdmin || isCaptain) && !season.day2DraftComplete;
 
   const s = lb.summary;
   const trufflePts = s.trufflePoints;

@@ -36,6 +36,14 @@ export default async function Day2DraftPage({
           </p>
         </div>
 
+        {!readOnly && (
+          <Button asChild className="w-full h-12 text-base">
+            <Link href={`/${yr}/day3/setup`}>
+              <Flag size={18} /> Set Up Day 3 Matchups
+            </Link>
+          </Button>
+        )}
+
         <TeamCard
           name="The Truffle Hogs"
           icon="🐗"
@@ -53,14 +61,6 @@ export default async function Day2DraftPage({
           textClass="text-syndicate"
           players={teams.myceliumSyndicate.filter((p) => !p.absent)}
         />
-
-        {!readOnly && (
-          <Button asChild className="w-full h-12 text-base">
-            <Link href={`/${yr}/day3/setup`}>
-              <Flag size={18} /> Set Up Day 3 Matchups
-            </Link>
-          </Button>
-        )}
       </div>
     </AppShell>
   );

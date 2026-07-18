@@ -12,7 +12,6 @@ import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
 import {
   completeDay2,
   completeDay2Draft,
-  getDay2DraftOverview,
   getDay2Leaderboard,
 } from "@/lib/server/day2";
 import {
@@ -33,7 +32,7 @@ export default async function HomePage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
-  const [user, state, playerList, day1Lb, picks, matches, day2Lb, day3Lb, draftOverview, courseNames] =
+  const [user, state, playerList, day1Lb, picks, matches, day2Lb, day3Lb, courseNames] =
     await Promise.all([
       getCurrentUser(),
       getSeasonState(season.id),
@@ -43,7 +42,6 @@ export default async function HomePage({
       getDay3Matches(season.id),
       getDay2Leaderboard(season.id),
       getDay3Leaderboard(season.id),
-      getDay2DraftOverview(season.id),
       getCourseNamesByDay(season.id),
     ]);
   // Prefer the season's course name for each day's card; fall back to the
@@ -65,16 +63,10 @@ export default async function HomePage({
   // Per-stage "ready to close out" gates — a stage's admin completion button only
   // appears once that stage can actually be completed, not merely "not yet done".
   // (Day 1 close + partner-draft lock live in the "next step" tile, not card buttons.)
-  // Match Play Draft: every Day-1 scorer is assigned to a team, both teams active
-  // (mirrors the validation inside completeDay2Draft).
-  const assignedIds = new Set(draftOverview.selected.map((s) => s.playerId));
-  const activeDraftTeams = new Set(
-    draftOverview.selected.filter((s) => !s.absent).map((s) => s.teamName),
-  );
-  const matchDraftReady =
-    day1Lb.length > 0 &&
-    day1Lb.every((e) => assignedIds.has(e.id)) &&
-    activeDraftTeams.size >= 2;
+  // Match Play Draft is "ready to finalize" only once the Sunday matchups have
+  // actually been drafted (day3Matches saved) — team rosters are pre-assigned, so
+  // roster assignment alone doesn't mean the draft happened.
+  const matchDraftReady = matches.length > 0;
   // Day 3: every match has been decided (match play closes out before 18 holes).
   const day3AllDecided =
     matches.length > 0 && matches.every((m) => m.status === "final");

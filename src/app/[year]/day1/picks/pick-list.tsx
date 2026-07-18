@@ -85,7 +85,7 @@ export function PickList({
       })}
 
       {selected && canPick && (
-        <div className="sticky bottom-3 mt-3 bg-primary text-white rounded-xl p-3 flex items-center gap-2 shadow-lg">
+        <div className="sticky bottom-20 z-10 mt-3 bg-primary text-white rounded-xl p-3 flex items-center gap-2 shadow-lg">
           <p className="flex-1 min-w-0 text-sm">
             Pick <span className="font-bold">{selected.name}</span> as {pickerName}&apos;s
             partner?

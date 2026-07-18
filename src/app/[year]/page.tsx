@@ -610,8 +610,8 @@ function computeNextStep(args: {
         if (!matchDraftReady) {
           return {
             label: "Match Play Draft",
-            sub: "Draft the 10 v 10 teams for Day 3",
-            href: "/day2/draft",
+            sub: "Draft the Sunday matchups",
+            href: "/day3/setup",
             emoji: "⚔️",
             urgent: true,
             audience: "admin",

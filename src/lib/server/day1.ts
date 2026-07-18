@@ -221,7 +221,29 @@ export async function submitDay1Pick(input: z.input<typeof submitPickSchema>) {
       name: `Team ${21 - picker.rank}`,
     });
 
-    const nextRank = picker.rank - 1;
+    let nextRank = picker.rank - 1;
+
+    // The final pick is forced: when only the last picker (rank 1) and a single
+    // eligible partner remain, pair them automatically — no real choice to make.
+    if (nextRank === 1) {
+      const pickedSet = new Set([
+        ...existingTeams.map((t) => t.player2Id),
+        data.pickedPlayerId,
+      ]);
+      const available = ranked.filter((r) => r.rank >= 11 && !pickedSet.has(r.id));
+      const lastPicker = ranked.find((r) => r.rank === 1);
+      if (available.length === 1 && lastPicker) {
+        await tx.insert(day2Teams).values({
+          seasonId,
+          player1Id: lastPicker.id,
+          player2Id: available[0].id,
+          pickOrder: 1,
+          name: `Team ${21 - 1}`,
+        });
+        nextRank = 0; // all pairs formed
+      }
+    }
+
     const allPicked = nextRank < 1;
     await tx
       .update(seasons)

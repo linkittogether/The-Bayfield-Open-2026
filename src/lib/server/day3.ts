@@ -590,6 +590,23 @@ export async function pickMatchOpponent(playerId: number) {
   });
   draft.nominating = otherSide(nomSide); // the captain who just picked nominates next
   draft.pending = null;
+
+  // If exactly one player remains on each side, the final matchup is forced —
+  // pair them automatically so there's no pointless last nominate/pick.
+  const teams = await getDay3Teams(seasonId);
+  const used = usedIds(draft);
+  const remT = teams.truffleHogs.filter((p) => !p.absent && !used.has(p.playerId));
+  const remS = teams.myceliumSyndicate.filter(
+    (p) => !p.absent && !used.has(p.playerId),
+  );
+  if (remT.length === 1 && remS.length === 1) {
+    draft.matches.push({
+      trufflePlayerId: remT[0].playerId,
+      syndicatePlayerId: remS[0].playerId,
+      nominatedBy: draft.nominating,
+    });
+  }
+
   await saveMatchDraft(seasonId, draft);
   return draft;
 }

@@ -34,9 +34,10 @@ export default async function Day2LeaderboardPage({
 
   const userId = user?.kind === "player" ? user.player.id : null;
   const isAdmin = user?.kind === "admin";
-  // Champions only once every pair has a score for every Day 1 + Day 2 round.
-  const allDone = lb.length > 0 && lb.every((e) => e.complete);
-  // Otherwise surface the provisional leader (needs at least one scored pair).
+  // Champions are only crowned once an admin closes Day 2 scoring. Before that
+  // (even with every score in) the top pair is shown as the provisional leader.
+  const champions = !!state?.day2Complete;
+  // Surface the leader as soon as any pair has a combined net.
   const leader = lb[0]?.combinedNet != null ? lb[0] : null;
 
   return (
@@ -45,17 +46,17 @@ export default async function Day2LeaderboardPage({
         <div className="mb-5 bg-primary text-white rounded-2xl p-5 text-center">
           <Trophy size={36} className="mx-auto mb-2 text-gold" />
           <p className="font-bold text-xl font-heading">
-            {allDone ? "Pairs Champions!" : "Current Leader"}
+            {champions ? "Pairs Champions!" : "Current Leader"}
           </p>
           <p className="text-green-200 text-sm mt-1">
             {leader.player1Name} & {leader.player2Name} with {formatNet(leader.combinedNet)} net
           </p>
-          {!allDone && (
+          {!champions && (
             <p className="text-green-200/80 text-xs mt-1">
-              Day 2 still in progress — not final
+              Provisional — final once Day 2 scoring is closed
             </p>
           )}
-          {allDone && !readOnly && !state?.day2DraftComplete && (
+          {champions && !readOnly && !state?.day2DraftComplete && (
             <Link
               href={`/${yr}/day2/draft`}
               className="mt-4 w-full h-11 rounded-lg bg-white text-primary font-semibold flex items-center justify-center hover:bg-white/90 active:scale-95 transition-colors"

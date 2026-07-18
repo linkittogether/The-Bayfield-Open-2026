@@ -52,9 +52,6 @@ export default async function HomePage({
     courseNames.get(day) ?? fallback;
 
   const isAdmin = user?.kind === "admin";
-  // Admins can manually close out each stage, but only for the active season
-  // (readOnly is true when viewing a past season).
-  const canAdminComplete = isAdmin && !readOnly;
   const userId = user?.kind === "player" ? user.player.id : null;
   // All Day-2 stroke rounds scored for every pair → the Day 3 team draft opens.
   const day2AllScored = day2Lb.length > 0 && day2Lb.every((e) => e.complete);
@@ -92,6 +89,8 @@ export default async function HomePage({
         matches,
         rosterCount: playerList.length,
         day2AllScored,
+        matchDraftReady,
+        day3AllDecided,
       });
   if (nextStep) {
     nextStep.href = `/${yr}${nextStep.href}`;
@@ -138,7 +137,12 @@ export default async function HomePage({
       </div>
 
       {nextStep &&
-        (nextStep.actions || nextStep.closeDay1 || nextStep.lockPartnerDraft ? (
+        (nextStep.actions ||
+        nextStep.closeDay1 ||
+        nextStep.lockPartnerDraft ||
+        nextStep.closeDay2 ||
+        nextStep.finalizeMatchDraft ||
+        nextStep.completeDay3 ? (
           <div
             className={cn(
               "rounded-2xl p-4 mb-5 border-2",
@@ -189,6 +193,12 @@ export default async function HomePage({
               <CloseDay1Button />
             ) : nextStep.lockPartnerDraft ? (
               <LockDraftButton />
+            ) : nextStep.closeDay2 ? (
+              <AdminCompleteButton action={completeDay2} label="Close Day 2 scoring" confirmLabel="Yes, close scoring" />
+            ) : nextStep.finalizeMatchDraft ? (
+              <AdminCompleteButton action={completeDay2Draft} label="Finalize Match Play Draft" confirmLabel="Yes, lock the teams" />
+            ) : nextStep.completeDay3 ? (
+              <AdminCompleteButton action={completeDay3} label="Complete Day 3" confirmLabel="Yes, finalize the Huron Cup" />
             ) : (
               <div className="grid grid-cols-2 gap-2 mt-3">
                 {nextStep.actions?.map((a) => (
@@ -329,9 +339,6 @@ export default async function HomePage({
         {/* Partner draft is locked from the "next step" tile (LockDraftButton),
             not a card button — keeps a single completion affordance. */}
         <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
-        {canAdminComplete && state?.day1PickingComplete && !state?.day2Complete && day2AllScored && (
-          <AdminCompleteButton action={completeDay2} label="Close Day 2 scoring" confirmLabel="Close scoring" />
-        )}
         {day2AllScored && (
           <Link href={`/${yr}/day2/draft`} className="-mt-1 ml-8">
             <div
@@ -357,13 +364,9 @@ export default async function HomePage({
             </div>
           </Link>
         )}
-        {canAdminComplete && day2AllScored && !state?.day2DraftComplete && matchDraftReady && (
-          <AdminCompleteButton action={completeDay2Draft} label="Finalize Match Play Draft" confirmLabel="Lock teams" indent />
-        )}
+        {/* Day 2 / Match Play Draft / Day 3 completions live in the "next step"
+            tile at the top, not as card buttons. */}
         <DayCard day={3} title={`Day 3 — ${dayLabel(3, "10 v 10")}`} subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
-        {canAdminComplete && state?.day2DraftComplete && !state?.day3Complete && day3AllDecided && (
-          <AdminCompleteButton action={completeDay3} label="Complete Day 3" confirmLabel="Finalize Huron Cup" />
-        )}
       </div>
       )}
 
@@ -509,6 +512,12 @@ type NextStep = {
   closeDay1?: boolean;
   // When true, the tile renders the "lock the partner draft" action button.
   lockPartnerDraft?: boolean;
+  // When true, the tile renders the "close Day 2 scoring" action button.
+  closeDay2?: boolean;
+  // When true, the tile renders the "finalize match play draft" action button.
+  finalizeMatchDraft?: boolean;
+  // When true, the tile renders the "complete Day 3" action button.
+  completeDay3?: boolean;
 };
 
 function computeNextStep(args: {
@@ -520,12 +529,36 @@ function computeNextStep(args: {
   matches: Awaited<ReturnType<typeof getDay3Matches>>;
   rosterCount: number;
   day2AllScored: boolean;
+  matchDraftReady: boolean;
+  day3AllDecided: boolean;
 }): NextStep | null {
-  const { state, userId, isAdmin, day1Lb, picks, matches, rosterCount, day2AllScored } =
-    args;
+  const {
+    state,
+    userId,
+    isAdmin,
+    day1Lb,
+    picks,
+    matches,
+    rosterCount,
+    day2AllScored,
+    matchDraftReady,
+    day3AllDecided,
+  } = args;
   if (!state) return null;
 
   if (!state.day3Complete && state.day2DraftComplete) {
+    // Admin can finalize the Huron Cup once every match is decided.
+    if (isAdmin && day3AllDecided) {
+      return {
+        label: "Complete Day 3",
+        sub: "Every match is decided — finalize the Huron Cup.",
+        href: "/day3/leaderboard",
+        emoji: "🏁",
+        urgent: true,
+        audience: "admin",
+        completeDay3: true,
+      };
+    }
     if (matches && matches.length > 0 && userId) {
       const myMatch = matches.find(
         (m) => m.trufflePlayerId === userId || m.syndicatePlayerId === userId,
@@ -568,14 +601,47 @@ function computeNextStep(args: {
   }
 
   if (state.day1PickingComplete && !state.day2DraftComplete) {
-    // All Day-2 rounds are in → the next step is drafting the Day 3 teams.
     if (day2AllScored) {
+      // Admin drives the close-out: close Day 2 scoring → draft teams → finalize.
+      if (isAdmin) {
+        if (!state.day2Complete) {
+          return {
+            label: "Close Day 2 scoring",
+            sub: "All pairs are in — lock the Pairs standings.",
+            href: "/day2/leaderboard",
+            emoji: "🔒",
+            urgent: true,
+            audience: "admin",
+            closeDay2: true,
+          };
+        }
+        if (!matchDraftReady) {
+          return {
+            label: "Match Play Draft",
+            sub: "Draft the 10 v 10 teams for Day 3",
+            href: "/day2/draft",
+            emoji: "⚔️",
+            urgent: true,
+            audience: "admin",
+          };
+        }
+        return {
+          label: "Finalize Match Play Draft",
+          sub: "Teams are drafted — lock them in for Sunday.",
+          href: "/day2/draft",
+          emoji: "🔒",
+          urgent: true,
+          audience: "admin",
+          finalizeMatchDraft: true,
+        };
+      }
+      // Everyone else: the draft is underway.
       return {
         label: "Match Play Draft",
-        sub: "Day 2 is in — draft the 10 v 10 teams for Day 3",
+        sub: "Day 2 is in — the 10 v 10 teams are being drafted",
         href: "/day2/draft",
         emoji: "⚔️",
-        urgent: true,
+        urgent: false,
       };
     }
     if (isAdmin) {

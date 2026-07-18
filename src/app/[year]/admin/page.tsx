@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Lock, Plus, Shield } from "lucide-react";
+import { Flag, Lock, Plus, Shield } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BulkHandicapPull } from "@/components/bulk-handicap-pull";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,12 @@ export default async function AdminPage({
         <Button asChild className="w-full h-11">
           <Link href={`/${yr}/day1/register`}>
             <Plus size={16} /> Register New Player
+          </Link>
+        </Button>
+
+        <Button asChild variant="outline" className="w-full h-11">
+          <Link href={`/${yr}/courses`}>
+            <Flag size={16} /> Courses &amp; Tees
           </Link>
         </Button>
 

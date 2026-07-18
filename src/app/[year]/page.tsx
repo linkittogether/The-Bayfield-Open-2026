@@ -9,6 +9,7 @@ import { getActiveRoster } from "@/lib/server/players";
 import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
 import { getDay2Leaderboard } from "@/lib/server/day2";
 import { getDay3Matches } from "@/lib/server/day3";
+import { getCourseNamesByDay } from "@/lib/server/courses";
 import { getSeasonState } from "@/lib/server/tournament";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
@@ -21,15 +22,21 @@ export default async function HomePage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
-  const [user, state, playerList, day1Lb, picks, matches, day2Lb] = await Promise.all([
-    getCurrentUser(),
-    getSeasonState(season.id),
-    getActiveRoster(season.id),
-    getDay1Leaderboard(season.id),
-    getDay1PicksOverview(season.id),
-    getDay3Matches(season.id),
-    getDay2Leaderboard(season.id),
-  ]);
+  const [user, state, playerList, day1Lb, picks, matches, day2Lb, courseNames] =
+    await Promise.all([
+      getCurrentUser(),
+      getSeasonState(season.id),
+      getActiveRoster(season.id),
+      getDay1Leaderboard(season.id),
+      getDay1PicksOverview(season.id),
+      getDay3Matches(season.id),
+      getDay2Leaderboard(season.id),
+      getCourseNamesByDay(season.id),
+    ]);
+  // Prefer the season's course name for each day's card; fall back to the
+  // format descriptor if a day has no course configured yet.
+  const dayLabel = (day: number, fallback: string) =>
+    courseNames.get(day) ?? fallback;
 
   const isAdmin = user?.kind === "admin";
   const userId = user?.kind === "player" ? user.player.id : null;
@@ -204,7 +211,7 @@ export default async function HomePage({
         ))}
 
       <div className="flex flex-col gap-3 mb-5">
-        <DayCard day={1} title="Day 1 — Just You" subtitle="9 holes · Handicap scoring" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
+        <DayCard day={1} title={`Day 1 — ${dayLabel(1, "Just You")}`} subtitle="9 holes · Solo, net" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
         {state?.day1Complete && (
           <Link href={`/${yr}/day1/picks`} className="-mt-1 ml-8">
             <div
@@ -234,7 +241,7 @@ export default async function HomePage({
             </div>
           </Link>
         )}
-        <DayCard day={2} title="Day 2 — Partner Up" subtitle="27 holes · Combined net score" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
+        <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
         {day2AllScored && (
           <Link href={`/${yr}/day2/draft`} className="-mt-1 ml-8">
             <div
@@ -260,7 +267,7 @@ export default async function HomePage({
             </div>
           </Link>
         )}
-        <DayCard day={3} title="Day 3 — 10 v 10" subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
+        <DayCard day={3} title={`Day 3 — ${dayLabel(3, "10 v 10")}`} subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-5">

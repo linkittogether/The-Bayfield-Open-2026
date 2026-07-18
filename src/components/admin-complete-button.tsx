@@ -64,7 +64,7 @@ export function AdminCompleteButton({
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="w-full h-10 rounded-xl border border-primary/30 bg-primary/5 text-primary font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95"
+          className="w-full h-10 rounded-xl bg-primary text-white font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95"
         >
           <Lock size={14} /> {label}
         </button>

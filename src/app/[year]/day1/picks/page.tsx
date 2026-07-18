@@ -96,9 +96,9 @@ export default async function Day1PicksPage({
       ) : data.state?.day1PickingStarted ? (
         // All pairs are made but the draft isn't locked yet — offer the lock here
         // too (same action as the home "next step" tile).
-        <div className="bg-primary text-white rounded-2xl p-4 mb-5">
+        <div className="bg-accent border border-secondary/40 rounded-2xl p-4 mb-5">
           <p className="font-bold text-lg font-heading">All pairs are set</p>
-          <p className="text-green-200 text-sm mt-0.5">
+          <p className="text-muted-foreground text-sm mt-0.5">
             {isAdmin && !readOnly
               ? "Review the pairs below, then lock the draft to start Day 2."
               : "Waiting for the organizer to lock the pairs."}

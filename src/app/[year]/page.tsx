@@ -102,6 +102,9 @@ export default async function HomePage({
       }));
     }
   }
+  // Player "your turn" tiles are solid green; admin action tiles use the calmer
+  // cream/accent look (like the Grint pull tiles) with a solid green button.
+  const tileGreen = !!nextStep?.urgent && nextStep?.audience !== "admin";
   const stepEyebrow =
     nextStep?.audience === "admin" ? (
       <span className="inline-flex items-center gap-1">
@@ -139,7 +142,7 @@ export default async function HomePage({
           <div
             className={cn(
               "rounded-2xl p-4 mb-5 border-2",
-              nextStep.urgent
+              tileGreen
                 ? "bg-primary text-white border-primary"
                 : "bg-accent border-secondary/40",
             )}
@@ -148,7 +151,7 @@ export default async function HomePage({
               <div
                 className={cn(
                   "w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl",
-                  nextStep.urgent ? "bg-white/20" : "bg-secondary/15",
+                  tileGreen ? "bg-white/20" : "bg-secondary/15",
                 )}
               >
                 {nextStep.emoji}
@@ -157,7 +160,7 @@ export default async function HomePage({
                 <p
                   className={cn(
                     "text-[10px] font-bold uppercase tracking-widest mb-0.5",
-                    nextStep.urgent ? "text-green-200" : "text-secondary",
+                    tileGreen ? "text-green-200" : "text-secondary",
                   )}
                 >
                   {stepEyebrow}
@@ -165,7 +168,7 @@ export default async function HomePage({
                 <p
                   className={cn(
                     "font-bold text-base leading-snug",
-                    nextStep.urgent ? "text-white" : "text-foreground",
+                    tileGreen ? "text-white" : "text-foreground",
                   )}
                 >
                   {nextStep.label}
@@ -174,7 +177,7 @@ export default async function HomePage({
                   <p
                     className={cn(
                       "text-xs mt-0.5",
-                      nextStep.urgent ? "text-green-200" : "text-muted-foreground",
+                      tileGreen ? "text-green-200" : "text-muted-foreground",
                     )}
                   >
                     {nextStep.sub}
@@ -192,7 +195,10 @@ export default async function HomePage({
                   <Link
                     key={a.href}
                     href={a.href}
-                    className="h-11 rounded-xl bg-white text-primary font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                    className={cn(
+                      "h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform",
+                      tileGreen ? "bg-white text-primary" : "bg-primary text-white",
+                    )}
                   >
                     {a.label}
                   </Link>
@@ -205,7 +211,7 @@ export default async function HomePage({
             <div
               className={cn(
                 "rounded-2xl p-4 mb-5 flex items-center gap-4 active:scale-[0.98] transition-transform border-2",
-                nextStep.urgent
+                tileGreen
                   ? "bg-primary text-white border-primary"
                   : "bg-accent border-secondary/40",
               )}
@@ -213,7 +219,7 @@ export default async function HomePage({
               <div
                 className={cn(
                   "w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl",
-                  nextStep.urgent ? "bg-white/20" : "bg-secondary/15",
+                  tileGreen ? "bg-white/20" : "bg-secondary/15",
                 )}
               >
                 {nextStep.emoji}
@@ -222,7 +228,7 @@ export default async function HomePage({
                 <p
                   className={cn(
                     "text-[10px] font-bold uppercase tracking-widest mb-0.5",
-                    nextStep.urgent ? "text-green-200" : "text-secondary",
+                    tileGreen ? "text-green-200" : "text-secondary",
                   )}
                 >
                   {stepEyebrow}
@@ -230,7 +236,7 @@ export default async function HomePage({
                 <p
                   className={cn(
                     "font-bold text-base leading-snug",
-                    nextStep.urgent ? "text-white" : "text-foreground",
+                    tileGreen ? "text-white" : "text-foreground",
                   )}
                 >
                   {nextStep.label}
@@ -239,14 +245,14 @@ export default async function HomePage({
                   <p
                     className={cn(
                       "text-xs mt-0.5",
-                      nextStep.urgent ? "text-green-200" : "text-muted-foreground",
+                      tileGreen ? "text-green-200" : "text-muted-foreground",
                     )}
                   >
                     {nextStep.sub}
                   </p>
                 )}
               </div>
-              <ArrowRight size={20} className={nextStep.urgent ? "text-white/80" : "text-muted-foreground"} />
+              <ArrowRight size={20} className={tileGreen ? "text-white/80" : "text-muted-foreground"} />
             </div>
           </Link>
         ))}

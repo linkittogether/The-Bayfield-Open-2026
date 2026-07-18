@@ -35,7 +35,7 @@ export function LockDraftButton() {
           <button
             type="button"
             onClick={() => setConfirming(false)}
-            className="h-11 rounded-xl bg-white/15 text-white font-semibold text-sm active:scale-95"
+            className="h-11 rounded-xl border border-border bg-white text-foreground font-semibold text-sm active:scale-95"
           >
             Cancel
           </button>
@@ -43,7 +43,7 @@ export function LockDraftButton() {
             type="button"
             onClick={run}
             disabled={pending}
-            className="h-11 rounded-xl bg-white text-primary font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-60"
+            className="h-11 rounded-xl bg-primary text-white font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-60"
           >
             <Check size={16} /> {pending ? "Locking…" : "Yes, lock the pairs"}
           </button>
@@ -52,12 +52,12 @@ export function LockDraftButton() {
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="w-full h-11 rounded-xl bg-white text-primary font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95"
+          className="w-full h-11 rounded-xl bg-primary text-white font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95"
         >
           <Lock size={15} /> Lock the partner draft
         </button>
       )}
-      {error && <p className="text-xs text-green-200 mt-1">{error}</p>}
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
     </div>
   );
 }

@@ -64,6 +64,34 @@ export async function getSeasonCourseSetup(seasonId: number): Promise<SegmentSet
   }));
 }
 
+/**
+ * Distinct course name(s) per day for a season, in play order (joined with
+ * " & " if a day spans more than one course). Lightweight — no Grint calls.
+ */
+export async function getCourseNamesByDay(
+  seasonId: number,
+): Promise<Map<number, string>> {
+  const rows = await db
+    .select({
+      day: segments.day,
+      sortOrder: segments.sortOrder,
+      name: courses.name,
+    })
+    .from(segments)
+    .leftJoin(courses, eq(segments.courseId, courses.id))
+    .where(eq(segments.seasonId, seasonId))
+    .orderBy(asc(segments.day), asc(segments.sortOrder));
+
+  const byDay = new Map<number, string[]>();
+  for (const r of rows) {
+    if (!r.name) continue;
+    const arr = byDay.get(r.day) ?? [];
+    if (!arr.includes(r.name)) arr.push(r.name);
+    byDay.set(r.day, arr);
+  }
+  return new Map([...byDay].map(([d, names]) => [d, names.join(" & ")]));
+}
+
 const setTeeSchema = z.object({
   segmentId: z.number().int().positive(),
   tee: z.string().min(1),

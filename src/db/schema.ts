@@ -209,6 +209,10 @@ export const day2Teams = pgTable("day2_teams", {
     .references(() => players.id, { onDelete: "cascade" }),
   pickOrder: integer().notNull(),
   name: text(),
+  // A DQ'd pair is excluded from the Pairs standings/champion (e.g. a partner
+  // didn't finish a round). Kept on the board, ranked last, flagged with reason.
+  disqualified: boolean().notNull().default(false),
+  dqReason: text(),
 });
 
 export const day3Matches = pgTable("day3_matches", {

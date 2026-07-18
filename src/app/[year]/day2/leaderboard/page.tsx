@@ -37,8 +37,8 @@ export default async function Day2LeaderboardPage({
   // Champions are only crowned once an admin closes Day 2 scoring. Before that
   // (even with every score in) the top pair is shown as the provisional leader.
   const champions = !!state?.day2Complete;
-  // Surface the leader as soon as any pair has a combined net.
-  const leader = lb[0]?.combinedNet != null ? lb[0] : null;
+  // Surface the leader as soon as any (non-DQ) pair has a combined net.
+  const leader = lb.find((e) => !e.disqualified && e.combinedNet != null) ?? null;
   // Does the current person already have all their Day-2 grosses in? → "Edit".
   const meId = user?.player.id ?? null;
   const myEntry =
@@ -156,28 +156,42 @@ export default async function Day2LeaderboardPage({
                 key={entry.id}
                 className={cn(
                   "rounded-xl border overflow-hidden",
-                  isMe
-                    ? "bg-primary/5 border-primary ring-2 ring-primary/30"
-                    : i === 0 && entry.combinedNet != null
-                      ? "bg-white border-gold ring-1 ring-gold/50"
-                      : "bg-white border-border",
+                  entry.disqualified
+                    ? "bg-muted/40 border-border opacity-75"
+                    : isMe
+                      ? "bg-primary/5 border-primary ring-2 ring-primary/30"
+                      : i === 0 && entry.combinedNet != null
+                        ? "bg-white border-gold ring-1 ring-gold/50"
+                        : "bg-white border-border",
                 )}
               >
                 <div className="p-3 flex items-center gap-3">
                   <div className="w-8 text-center font-bold text-sm">
-                    {entry.combinedNet != null ? medals[i] || ordinal(i + 1) : "—"}
+                    {entry.disqualified ? (
+                      <span className="text-[10px] font-bold text-destructive">DQ</span>
+                    ) : entry.combinedNet != null ? (
+                      medals[i] || ordinal(i + 1)
+                    ) : (
+                      "—"
+                    )}
                   </div>
                   <div className="flex -space-x-2 flex-shrink-0">
                     <PlayerAvatar name={entry.player1Name} photoUrl={entry.player1Photo} size="sm" />
                     <PlayerAvatar name={entry.player2Name} photoUrl={entry.player2Photo} size="sm" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">
+                    <p className={cn("font-semibold text-sm truncate", entry.disqualified && "text-muted-foreground")}>
                       {entry.player1Name} & {entry.player2Name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Index {entry.player1Handicap}/{entry.player2Handicap}
-                    </p>
+                    {entry.disqualified ? (
+                      <p className="text-xs text-destructive font-medium truncate">
+                        Disqualified{entry.dqReason ? ` — ${entry.dqReason}` : ""}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Index {entry.player1Handicap}/{entry.player2Handicap}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {isMe && (
@@ -186,10 +200,18 @@ export default async function Day2LeaderboardPage({
                       </span>
                     )}
                     <div className="text-right">
-                      <p className="font-bold text-xl leading-none">
-                        {formatNet(entry.combinedNet)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">net</p>
+                      {entry.disqualified ? (
+                        <p className="font-bold text-lg leading-none text-muted-foreground line-through">
+                          {formatNet(entry.combinedNet)}
+                        </p>
+                      ) : (
+                        <>
+                          <p className="font-bold text-xl leading-none">
+                            {formatNet(entry.combinedNet)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">net</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>

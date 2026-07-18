@@ -39,6 +39,8 @@ const teamWithPlayersColumns = {
   id: day2Teams.id,
   name: day2Teams.name,
   pickOrder: day2Teams.pickOrder,
+  disqualified: day2Teams.disqualified,
+  dqReason: day2Teams.dqReason,
   player1Id: p1.id,
   player1Name: p1.name,
   player1Handicap: p1.handicap,
@@ -91,6 +93,9 @@ export interface Day2PairStanding {
   segmentsScored: number;
   /** True when BOTH partners have a score for every Day 1 + Day 2 stroke segment. */
   complete: boolean;
+  /** DQ'd pairs are ranked last and excluded from the champion. */
+  disqualified: boolean;
+  dqReason: string | null;
 }
 
 /**
@@ -156,10 +161,14 @@ export async function getDay2Leaderboard(
         strokeSegCount > 0 &&
         (s1?.segmentsScored ?? 0) >= strokeSegCount &&
         (s2?.segmentsScored ?? 0) >= strokeSegCount,
+      disqualified: t.disqualified,
+      dqReason: t.dqReason,
     };
   });
 
   rows.sort((a, b) => {
+    // DQ'd pairs always rank last, regardless of net.
+    if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
     if (a.combinedNet == null && b.combinedNet == null) return 0;
     if (a.combinedNet == null) return 1;
     if (b.combinedNet == null) return -1;
@@ -233,7 +242,7 @@ export async function getDay2DraftOverview(seasonId: number) {
 
   const standings = await getDay2Leaderboard(seasonId);
   const winners = standings
-    .filter((s) => s.combinedNet != null)
+    .filter((s) => s.combinedNet != null && !s.disqualified)
     .slice(0, 2)
     .map((s) => ({
       teamId: s.id,

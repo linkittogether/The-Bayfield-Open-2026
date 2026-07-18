@@ -148,6 +148,13 @@
       "when": 1784408052125,
       "tag": "0020_pre2025_seasons",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784409613485,
+      "tag": "0021_day2_dq",
+      "breakpoints": true
     }
   ]
 }

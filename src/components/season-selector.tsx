@@ -47,7 +47,10 @@ export function SeasonSelector({
           {viewedYear === currentYear ? " · current" : ""}
         </span>
       </SelectTrigger>
-      <SelectContent>
+      {/* Anchor to the trigger (popper) and align to its right edge. The
+          default item-aligned positioning collapses to the viewport's top-left
+          on narrow mobile screens when the trigger sits at the right. */}
+      <SelectContent position="popper" align="end" sideOffset={4}>
         {years.map((y) => (
           <SelectItem key={y} value={String(y)}>
             {y}

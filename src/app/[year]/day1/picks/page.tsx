@@ -3,10 +3,9 @@ import { AppShell } from "@/components/app-shell";
 import { LockDraftButton } from "@/components/lock-draft-button";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { formatNet, ordinal } from "@/lib/format";
-import { getDay1PicksOverview, getPairingsEmailText } from "@/lib/server/day1";
+import { getDay1PicksOverview } from "@/lib/server/day1";
 import { getSeasonView } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
-import { PairingsEmail } from "./pairings-email";
 import { PickList } from "./pick-list";
 import { UndoPickButton } from "./undo-pick-button";
 
@@ -43,10 +42,6 @@ export default async function Day1PicksPage({
     ? `${latestPicker?.name}'s pick of ${latestPicked?.name}`
     : undefined;
   const showUndo = !readOnly && isAdmin && data.teams.length > 0;
-
-  // Admin-only pairings email draft, once the teams are locked.
-  const emailDraft =
-    isAdmin && data.pickingComplete ? await getPairingsEmailText(season.id) : null;
 
   if (data.pickingComplete) {
     return (
@@ -85,12 +80,6 @@ export default async function Day1PicksPage({
             );
           })}
         </div>
-
-        {emailDraft && (
-          <div className="mt-5">
-            <PairingsEmail subject={emailDraft.subject} body={emailDraft.body} />
-          </div>
-        )}
       </AppShell>
     );
   }

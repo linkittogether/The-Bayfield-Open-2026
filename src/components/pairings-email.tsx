@@ -32,7 +32,7 @@ export function PairingsEmail({
       <div>
         <p className="font-semibold text-sm">Email pairings to the course</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Uses full names. Copy the text or open it in your email app.
+          Copy the text or open it in your email app.
         </p>
       </div>
       <textarea

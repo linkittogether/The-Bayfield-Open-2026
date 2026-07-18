@@ -18,7 +18,11 @@ import {
   completeDay2Draft,
   getDay2Leaderboard,
 } from "@/lib/server/day2";
-import { completeDay3, getDay3Matches } from "@/lib/server/day3";
+import {
+  completeDay3,
+  getDay3Leaderboard,
+  getDay3Matches,
+} from "@/lib/server/day3";
 import { getCourseNamesByDay } from "@/lib/server/courses";
 import { getSeasonState } from "@/lib/server/tournament";
 import { getSeasonView } from "@/lib/server/seasons";
@@ -32,7 +36,7 @@ export default async function HomePage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
-  const [user, state, playerList, day1Lb, picks, matches, day2Lb, courseNames] =
+  const [user, state, playerList, day1Lb, picks, matches, day2Lb, day3Lb, courseNames] =
     await Promise.all([
       getCurrentUser(),
       getSeasonState(season.id),
@@ -41,6 +45,7 @@ export default async function HomePage({
       getDay1PicksOverview(season.id),
       getDay3Matches(season.id),
       getDay2Leaderboard(season.id),
+      getDay3Leaderboard(season.id),
       getCourseNamesByDay(season.id),
     ]);
   // Prefer the season's course name for each day's card; fall back to the
@@ -55,6 +60,12 @@ export default async function HomePage({
   const userId = user?.kind === "player" ? user.player.id : null;
   // All Day-2 stroke rounds scored for every pair → the Day 3 team draft opens.
   const day2AllScored = day2Lb.length > 0 && day2Lb.every((e) => e.complete);
+  // Once the season is complete, the stage stack is replaced by the two trophies.
+  const seasonComplete = !!state?.day3Complete;
+  const pairsChamp = day2Lb[0] ?? null;
+  const hc = day3Lb.summary;
+  const huronTie = hc.trufflePoints === hc.syndicatePoints;
+  const truffleWonCup = hc.trufflePoints > hc.syndicatePoints;
   const nextStep = readOnly
     ? null
     : computeNextStep({
@@ -223,6 +234,40 @@ export default async function HomePage({
           </Link>
         ))}
 
+      {seasonComplete ? (
+        <div className="flex flex-col gap-3 mb-5">
+          <ChampionTile
+            href={`/${yr}/day2/leaderboard`}
+            eyebrow="Pairs Champion"
+            emoji="🏆"
+            title={
+              pairsChamp
+                ? `${pairsChamp.player1Name} & ${pairsChamp.player2Name}`
+                : "—"
+            }
+            subtitle={
+              pairsChamp?.combinedNet != null
+                ? `Combined net ${formatNet(pairsChamp.combinedNet)}`
+                : "Pairs competition"
+            }
+            tone="gold"
+          />
+          <ChampionTile
+            href={`/${yr}/day3/leaderboard`}
+            eyebrow="Huron Cup"
+            emoji={huronTie ? "🤝" : truffleWonCup ? "🐗" : "🍄"}
+            title={
+              huronTie
+                ? "It's a Draw"
+                : truffleWonCup
+                  ? "Truffle Hogs"
+                  : "Mycelium Syndicate"
+            }
+            subtitle={`${hc.trufflePoints}–${hc.syndicatePoints} · Huron Cup ${season.year}`}
+            tone={huronTie ? "muted" : truffleWonCup ? "truffle" : "syndicate"}
+          />
+        </div>
+      ) : (
       <div className="flex flex-col gap-3 mb-5">
         <DayCard day={1} title={`Day 1 — ${dayLabel(1, "Just You")}`} subtitle="9 holes · Solo, net" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
         {canAdminComplete && !state?.day1Complete && (
@@ -297,6 +342,7 @@ export default async function HomePage({
           <AdminCompleteButton action={completeDay3} label="Mark Day 3 complete" confirmLabel="Finalize Huron Cup" />
         )}
       </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 mb-5">
         <Link href={`/${yr}/day2/draft`}>
@@ -325,6 +371,57 @@ export default async function HomePage({
         </Link>
       )}
     </AppShell>
+  );
+}
+
+// Season-complete summary tile: the Pairs champion and the Huron Cup winner
+// replace the stage stack once the tournament is over.
+function ChampionTile({
+  href,
+  eyebrow,
+  emoji,
+  title,
+  subtitle,
+  tone,
+}: {
+  href: string;
+  eyebrow: string;
+  emoji: string;
+  title: string;
+  subtitle: string;
+  tone: "gold" | "truffle" | "syndicate" | "muted";
+}) {
+  const toneClass =
+    tone === "truffle"
+      ? "bg-truffle-light border-truffle/30"
+      : tone === "syndicate"
+        ? "bg-syndicate-light border-syndicate/30"
+        : tone === "gold"
+          ? "bg-gold/10 border-gold/30"
+          : "bg-muted border-border";
+  return (
+    <Link href={href}>
+      <div
+        className={cn(
+          "rounded-2xl p-5 border flex items-center gap-4 active:scale-[0.98] transition-transform",
+          toneClass,
+        )}
+      >
+        <div className="w-14 h-14 rounded-full bg-white/70 flex items-center justify-center text-3xl flex-shrink-0">
+          {emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+            {eyebrow}
+          </p>
+          <p className="text-xl font-bold font-heading leading-tight truncate">
+            {title}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
+        </div>
+        <Trophy size={20} className="text-gold flex-shrink-0" />
+      </div>
+    </Link>
   );
 }
 

@@ -72,7 +72,11 @@ export const teams = pgTable("teams", {
 
 export const players = pgTable("players", {
   id: serial().primaryKey(),
+  // Short display name used everywhere in the app (e.g. "Josh W").
   name: text().notNull(),
+  // Full legal name (e.g. "Josh Wright") for external comms like the pairings
+  // email to the course. Nullable; falls back to `name` when unset.
+  fullName: text(),
   photoUrl: text(),
   handicap: numeric({ precision: 3, scale: 1, mode: "number" })
     .notNull()

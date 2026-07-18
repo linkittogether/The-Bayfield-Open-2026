@@ -1,0 +1,1 @@
+ALTER TABLE "players" ADD COLUMN "full_name" text;

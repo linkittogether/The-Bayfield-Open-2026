@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -260,6 +260,70 @@ export async function submitDay1Pick(input: z.input<typeof submitPickSchema>) {
   });
   await notifySeasonChange(seasonId);
   return result;
+}
+
+/**
+ * Admin-only draft of the Saturday pairings email to the course. Uses each
+ * player's full name where set (falls back to the short name). Returns null if
+ * no pairs exist yet.
+ */
+export async function getPairingsEmailText(
+  seasonId: number,
+): Promise<{ subject: string; body: string } | null> {
+  await requireAdmin();
+  const teams = await db
+    .select({
+      pickOrder: day2Teams.pickOrder,
+      p1: day2Teams.player1Id,
+      p2: day2Teams.player2Id,
+    })
+    .from(day2Teams)
+    .where(eq(day2Teams.seasonId, seasonId))
+    .orderBy(asc(day2Teams.pickOrder));
+  if (teams.length === 0) return null;
+
+  const ids = [...new Set(teams.flatMap((t) => [t.p1, t.p2]))];
+  const rows = await db
+    .select({ id: players.id, name: players.name, fullName: players.fullName })
+    .from(players)
+    .where(inArray(players.id, ids));
+  const nameById = new Map(rows.map((r) => [r.id, r.fullName?.trim() || r.name]));
+
+  const [season] = await db
+    .select({ year: seasons.year })
+    .from(seasons)
+    .where(eq(seasons.id, seasonId))
+    .limit(1);
+  const [sat] = await db
+    .select({ date: segments.date })
+    .from(segments)
+    .where(and(eq(segments.seasonId, seasonId), eq(segments.day, 2)))
+    .orderBy(asc(segments.sortOrder))
+    .limit(1);
+  const dateStr = sat?.date
+    ? new Date(`${sat.date}T12:00:00`).toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : "Saturday";
+
+  const lines = teams.map(
+    (t, i) => `${i + 1}. ${nameById.get(t.p1) ?? "?"} & ${nameById.get(t.p2) ?? "?"}`,
+  );
+  const subject = `Bayfield Open ${season?.year ?? ""} — Saturday pairings`.trim();
+  const body = [
+    "Hi Ironwood,",
+    "",
+    `Here are our groups for ${dateStr}:`,
+    "",
+    ...lines,
+    "",
+    "Thanks!",
+    "The Bayfield Open",
+  ].join("\n");
+  return { subject, body };
 }
 
 export async function completeDay1() {

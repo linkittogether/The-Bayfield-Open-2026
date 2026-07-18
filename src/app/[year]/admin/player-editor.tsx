@@ -13,6 +13,7 @@ import { updatePlayer } from "@/lib/server/players";
 interface PlayerLite {
   id: number;
   name: string;
+  fullName: string | null;
   photoUrl: string | null;
   handicap: number;
   pin: string | null;
@@ -29,6 +30,7 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
   const [editHcp, setEditHcp] = useState("0");
   const [editPin, setEditPin] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editFullName, setEditFullName] = useState("");
   const [editAdmin, setEditAdmin] = useState(false);
   const [editLock, setEditLock] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
     setEditHcp(String(p.handicap));
     setEditPin(p.pin ?? "");
     setEditEmail(p.email ?? "");
+    setEditFullName(p.fullName ?? "");
     setEditAdmin(p.isAdmin);
     setEditLock(p.handicapLocked);
     setMsg(null);
@@ -72,11 +75,13 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
           handicap?: number;
           pin?: string;
           email?: string;
+          fullName?: string;
           isAdmin?: boolean;
           handicapLocked?: boolean;
         } = {
           handicap: Math.round((parseFloat(editHcp) || 0) * 10) / 10,
           email: editEmail.trim(),
+          fullName: editFullName.trim(),
           isAdmin: editAdmin,
           handicapLocked: editLock,
         };
@@ -222,6 +227,17 @@ export function PlayerEditor({ players }: { players: PlayerLite[] }) {
                     />
                     Lock handicap — skip Grint pulls
                   </label>
+                </div>
+                <div>
+                  <Label className="text-xs mb-1 block">
+                    Full name (for the course pairings email)
+                  </Label>
+                  <Input
+                    type="text"
+                    value={editFullName}
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    placeholder="e.g. Josh Wright"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs mb-1 block">

@@ -108,6 +108,7 @@ export default async function AdminPage({
           players={players.map((p) => ({
             id: p.id,
             name: p.name,
+            fullName: p.fullName,
             photoUrl: p.photoUrl,
             handicap: p.handicap,
             pin: p.pin,

@@ -113,7 +113,7 @@ export default async function Day3LeaderboardPage({
       {(truffleNet?.net != null || syndicateNet?.net != null) && (
         <div className="bg-white border border-border rounded-2xl p-4 mb-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider text-center">
-            Team Net · nice-to-have
+            Team Net
           </p>
           <p className="text-[11px] text-muted-foreground text-center mb-3">
             Combined stroke-play net — informational; the cup is decided by match play

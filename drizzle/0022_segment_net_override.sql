@@ -1,0 +1,1 @@
+ALTER TABLE "segment_scores" ADD COLUMN "net_override" numeric(4, 1);

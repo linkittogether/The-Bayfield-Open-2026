@@ -65,6 +65,7 @@ export async function getSeasonScoring(seasonId: number): Promise<SeasonScoring>
       segmentId: segmentScores.segmentId,
       playerId: segmentScores.playerId,
       gross: segmentScores.gross,
+      netOverride: segmentScores.netOverride,
     })
     .from(segmentScores)
     .innerJoin(segments, eq(segments.id, segmentScores.segmentId))
@@ -83,15 +84,19 @@ export async function getSeasonScoring(seasonId: number): Promise<SeasonScoring>
   for (const sc of scoreRows) {
     const seg = segById.get(sc.segmentId)!;
     const index = idxByPlayer.get(sc.playerId) ?? null;
+    // A stored net override (historical imports) is authoritative; otherwise
+    // compute net from the season index + segment course data.
     const net =
-      index == null
-        ? null
-        : netForSegment(sc.gross, index, {
-            rating: seg.rating,
-            slope: seg.slope,
-            par: seg.par,
-            holes: seg.holes as 9 | 18,
-          });
+      sc.netOverride != null
+        ? sc.netOverride
+        : index == null
+          ? null
+          : netForSegment(sc.gross, index, {
+              rating: seg.rating,
+              slope: seg.slope,
+              par: seg.par,
+              holes: seg.holes as 9 | 18,
+            });
 
     let ps = byPlayer.get(sc.playerId);
     if (!ps) {

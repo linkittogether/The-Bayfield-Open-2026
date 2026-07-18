@@ -192,6 +192,11 @@ export const segmentScores = pgTable(
       .notNull()
       .references(() => players.id, { onDelete: "cascade" }),
     gross: integer().notNull(),
+    // Historical seasons imported from event leaderboards (e.g. 2024, off Grint)
+    // used tournament handicaps that don't match the WHS engine. When set, this
+    // is the authoritative net for the segment and bypasses the computed net.
+    // Null for live seasons — net is computed from index + course data as usual.
+    netOverride: numeric({ precision: 4, scale: 1, mode: "number" }),
   },
   (t) => [unique().on(t.segmentId, t.playerId)],
 );

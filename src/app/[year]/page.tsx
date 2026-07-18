@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import { formatNet } from "@/lib/format";
 import { getActiveRoster } from "@/lib/server/players";
 import {
-  completeDay1,
   completePartnerDraft,
   getDay1Leaderboard,
   getDay1PicksOverview,
@@ -71,8 +70,7 @@ export default async function HomePage({
 
   // Per-stage "ready to close out" gates — a stage's admin completion button only
   // appears once that stage can actually be completed, not merely "not yet done".
-  const day1AllScored =
-    playerList.length > 0 && day1Lb.length >= playerList.length;
+  // (Day 1 is closed via the "next step" tile's CloseDay1Button, not a card button.)
   // Partner picking: every eligible partner (bottom half) has been chosen.
   const partnerDraftReady =
     !!state?.day1PickingStarted && picks.available.length === 0;
@@ -292,10 +290,9 @@ export default async function HomePage({
         </div>
       ) : (
       <div className="flex flex-col gap-3 mb-5">
+        {/* Day 1 has no per-card completion button — the "next step" tile above
+            already surfaces "Close scoring & start picks" (CloseDay1Button). */}
         <DayCard day={1} title={`Day 1 — ${dayLabel(1, "Just You")}`} subtitle="9 holes · Solo, net" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
-        {canAdminComplete && !state?.day1Complete && day1AllScored && (
-          <AdminCompleteButton action={completeDay1} label="Close Day 1 scoring" confirmLabel="Close scoring & start picks" />
-        )}
         {state?.day1Complete && (
           <Link href={`/${yr}/day1/picks`} className="-mt-1 ml-8">
             <div

@@ -289,6 +289,12 @@ export async function setDay3Matches(input: z.input<typeof setMatchesSchema>) {
       .insert(day3Matches)
       .values(data.matches.map((m) => ({ ...m, seasonId })))
       .returning();
+    // Saving the matchups IS finalizing the draft — it starts Day 3, so mark the
+    // match-play draft complete (no separate "finalize" step needed).
+    await tx
+      .update(seasons)
+      .set({ day2DraftComplete: true, currentDay: 3 })
+      .where(eq(seasons.id, seasonId));
     return inserted;
   });
   await notifySeasonChange(seasonId);
@@ -590,6 +596,23 @@ export async function pickMatchOpponent(playerId: number) {
   });
   draft.nominating = otherSide(nomSide); // the captain who just picked nominates next
   draft.pending = null;
+
+  // If exactly one player remains on each side, the final matchup is forced —
+  // pair them automatically so there's no pointless last nominate/pick.
+  const teams = await getDay3Teams(seasonId);
+  const used = usedIds(draft);
+  const remT = teams.truffleHogs.filter((p) => !p.absent && !used.has(p.playerId));
+  const remS = teams.myceliumSyndicate.filter(
+    (p) => !p.absent && !used.has(p.playerId),
+  );
+  if (remT.length === 1 && remS.length === 1) {
+    draft.matches.push({
+      trufflePlayerId: remT[0].playerId,
+      syndicatePlayerId: remS[0].playerId,
+      nominatedBy: draft.nominating,
+    });
+  }
+
   await saveMatchDraft(seasonId, draft);
   return draft;
 }

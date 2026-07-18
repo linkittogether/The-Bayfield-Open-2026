@@ -34,10 +34,24 @@ export default async function Day2LeaderboardPage({
 
   const userId = user?.kind === "player" ? user.player.id : null;
   const isAdmin = user?.kind === "admin";
-  // Champions only once every pair has a score for every Day 1 + Day 2 round.
-  const allDone = lb.length > 0 && lb.every((e) => e.complete);
-  // Otherwise surface the provisional leader (needs at least one scored pair).
+  // Champions are only crowned once an admin closes Day 2 scoring. Before that
+  // (even with every score in) the top pair is shown as the provisional leader.
+  const champions = !!state?.day2Complete;
+  // Surface the leader as soon as any pair has a combined net.
   const leader = lb[0]?.combinedNet != null ? lb[0] : null;
+  // Does the current person already have all their Day-2 grosses in? → "Edit".
+  const meId = user?.player.id ?? null;
+  const myEntry =
+    meId != null
+      ? lb.find((e) => e.player1Id === meId || e.player2Id === meId)
+      : null;
+  const myGrosses = myEntry
+    ? myEntry.player1Id === meId
+      ? myEntry.player1Day2Grosses
+      : myEntry.player2Day2Grosses
+    : null;
+  const iScored =
+    !!myGrosses && myGrosses.length > 0 && myGrosses.every((g) => g != null);
 
   return (
     <AppShell title="Day 2 Leaderboard" year={yr}>
@@ -45,17 +59,17 @@ export default async function Day2LeaderboardPage({
         <div className="mb-5 bg-primary text-white rounded-2xl p-5 text-center">
           <Trophy size={36} className="mx-auto mb-2 text-gold" />
           <p className="font-bold text-xl font-heading">
-            {allDone ? "Pairs Champions!" : "Current Leader"}
+            {champions ? "Pairs Champions!" : "Current Leader"}
           </p>
           <p className="text-green-200 text-sm mt-1">
             {leader.player1Name} & {leader.player2Name} with {formatNet(leader.combinedNet)} net
           </p>
-          {!allDone && (
+          {!champions && (
             <p className="text-green-200/80 text-xs mt-1">
-              Day 2 still in progress — not final
+              Provisional — final once Day 2 scoring is closed
             </p>
           )}
-          {allDone && !readOnly && !state?.day2DraftComplete && (
+          {champions && !readOnly && !state?.day2DraftComplete && (
             <Link
               href={`/${yr}/day2/draft`}
               className="mt-4 w-full h-11 rounded-lg bg-white text-primary font-semibold flex items-center justify-center hover:bg-white/90 active:scale-95 transition-colors"
@@ -66,17 +80,19 @@ export default async function Day2LeaderboardPage({
         </div>
       )}
 
-      {!readOnly && (
+      {/* Day 2 score entry (manual + Grint) is only possible once pairs are set
+          (day1PickingComplete) and until Day 2 scoring is closed. */}
+      {!readOnly && !champions && state?.day1PickingComplete && (
         <div className="mb-5">
           <Button asChild className="w-full h-11">
             <Link href={`/${yr}/day2/scores`}>
-              <ClipboardList size={16} /> Enter Score
+              <ClipboardList size={16} /> {iScored ? "Edit Score" : "Enter Score"}
             </Link>
           </Button>
         </div>
       )}
 
-      {!readOnly && isAdmin && (
+      {!readOnly && isAdmin && !champions && state?.day1PickingComplete && (
         <div className="mb-5">
           <BulkGrintPull day={2} />
         </div>
@@ -90,12 +106,20 @@ export default async function Day2LeaderboardPage({
         <div className="bg-muted rounded-2xl p-8 text-center">
           <Trophy size={40} className="mx-auto mb-3 text-muted-foreground" />
           <p className="font-semibold text-muted-foreground">No pairs yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Complete Day 1 partner selection first
-          </p>
-          <Link href={`/${yr}/day1/picks`} className="mt-3 inline-block text-sm text-primary underline">
-            Go to partner selection →
-          </Link>
+          {state?.day1Complete ? (
+            <>
+              <p className="text-sm text-muted-foreground mt-1">
+                Complete Day 1 partner selection first
+              </p>
+              <Link href={`/${yr}/day1/picks`} className="mt-3 inline-block text-sm text-primary underline">
+                Go to partner selection →
+              </Link>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-1">
+              Day 1 scoring must be completed first
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

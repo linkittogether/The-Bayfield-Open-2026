@@ -76,8 +76,9 @@ const CONFIG: SeasonConfig[] = [
     ],
     segments: [
       { day: 1, sortOrder: 1, label: "Bluewater", courseName: "Bluewater", holes: 9, tee: "White/Blue", nine: "F9", date: "2026-07-24" },
-      { day: 2, sortOrder: 2, label: "Ironwood back 9", courseName: "Ironwood", holes: 9, tee: "Blue", nine: "B9", date: "2026-07-25" },
-      { day: 2, sortOrder: 3, label: "Ironwood 18", courseName: "Ironwood", holes: 18, tee: "Blue", date: "2026-07-25" },
+      // Day 2 plays the 18 first, then the front 9 (per Ironwood).
+      { day: 2, sortOrder: 2, label: "Ironwood 18", courseName: "Ironwood", holes: 18, tee: "Blue", date: "2026-07-25" },
+      { day: 2, sortOrder: 3, label: "Ironwood front 9", courseName: "Ironwood", holes: 9, tee: "Blue", nine: "F9", date: "2026-07-25" },
       { day: 3, sortOrder: 1, label: "Woodlands Links", courseName: "Woodlands Links", holes: 18, tee: "Silver", date: "2026-07-26" },
     ],
   },

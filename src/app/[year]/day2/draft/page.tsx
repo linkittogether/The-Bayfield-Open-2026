@@ -1,10 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Flag, Star } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { PlayerAvatar } from "@/components/player-avatar";
-import { getDay3Teams } from "@/lib/server/day3";
+import { getDay3Matches, getDay3Teams, getMatchDraft } from "@/lib/server/day3";
 import { getSeasonView } from "@/lib/server/seasons";
 
 export const metadata = { title: "Day 3 Teams" };
@@ -17,7 +18,18 @@ export default async function Day2DraftPage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
-  const teams = await getDay3Teams(season.id);
+  const [teams, draft, matches] = await Promise.all([
+    getDay3Teams(season.id),
+    getMatchDraft(season.id),
+    getDay3Matches(season.id),
+  ]);
+
+  // On the live season, once the matchup draft has begun (or matchups are
+  // saved) this team-review page is stale — bounce to the right place.
+  if (!readOnly) {
+    if (matches.length > 0) redirect(`/${yr}/day3/leaderboard`);
+    if (draft?.started) redirect(`/${yr}/day3/setup`);
+  }
 
   return (
     <AppShell title="Day 3 Teams" showBack backTo={`/${yr}/day2/leaderboard`} year={yr}>
@@ -36,6 +48,14 @@ export default async function Day2DraftPage({
           </p>
         </div>
 
+        {!readOnly && (
+          <Button asChild className="w-full h-12 text-base">
+            <Link href={`/${yr}/day3/setup`}>
+              <Flag size={18} /> Set Up Day 3 Matchups
+            </Link>
+          </Button>
+        )}
+
         <TeamCard
           name="The Truffle Hogs"
           icon="🐗"
@@ -53,14 +73,6 @@ export default async function Day2DraftPage({
           textClass="text-syndicate"
           players={teams.myceliumSyndicate.filter((p) => !p.absent)}
         />
-
-        {!readOnly && (
-          <Button asChild className="w-full h-12 text-base">
-            <Link href={`/${yr}/day3/setup`}>
-              <Flag size={18} /> Set Up Day 3 Matchups
-            </Link>
-          </Button>
-        )}
       </div>
     </AppShell>
   );

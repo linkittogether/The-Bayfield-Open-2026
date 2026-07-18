@@ -4,6 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
+  appConfig,
   day2Teams,
   day3Holes,
   day3Matches,
@@ -82,6 +83,13 @@ export async function resetSeason(seasonId: number) {
       .from(segments)
       .where(eq(segments.seasonId, seasonId));
     await tx.delete(segmentScores).where(inArray(segmentScores.segmentId, segIds));
+
+    // Clear the in-progress Day-3 match draft (a JSON blob in app_config), so a
+    // fresh draft starts at the "who nominates first" step instead of resuming a
+    // previous run's state. Key matches matchDraftKey() in server/day3.ts.
+    await tx
+      .delete(appConfig)
+      .where(eq(appConfig.key, `day3_draft:${seasonId}`));
 
     // Team rosters (season_rosters) are intentionally KEPT.
 

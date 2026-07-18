@@ -111,11 +111,12 @@ export async function getDay2Leaderboard(
   // segment_scores, so exclude it from the "all scored" check.
   const strokeSegCount = scoring.segments.filter((s) => s.day <= 2).length;
 
-  // Day-2 segments become breakdown columns — the 18-hole round first, then the
-  // back-9 (play order), labelled by hole count.
+  // Day-2 segments become breakdown columns in PLAY ORDER (sortOrder), labelled
+  // by hole count — so each season shows the rounds in the order they're played
+  // (e.g. 2026 Ironwood is the 18 first, then the front 9).
   const day2Segs = scoring.segments
     .filter((s) => s.day === 2)
-    .sort((a, b) => b.holes - a.holes);
+    .sort((a, b) => a.sortOrder - b.sortOrder);
   const day2SegLabels = day2Segs.map((s) => `${s.holes}h`);
 
   const rows: Day2PairStanding[] = pairs.map((t) => {
@@ -313,6 +314,21 @@ export async function removeDay2DraftPick(playerId: number) {
   return { rowsAffected: result.count };
 }
 
+/**
+ * Admin: close Day 2 stroke-play scoring. Independent of the Match Play Draft
+ * (see completeDay2Draft) — this just records that the Pairs competition is final.
+ */
+export async function completeDay2() {
+  await requireAdmin();
+  const seasonId = await getCurrentSeasonId();
+  await db
+    .update(seasons)
+    .set({ day2Complete: true, currentDay: 2 })
+    .where(eq(seasons.id, seasonId));
+  await notifySeasonChange(seasonId);
+  return { ok: true };
+}
+
 export async function completeDay2Draft() {
   await requireAdmin();
   const seasonId = await getCurrentSeasonId();
@@ -353,7 +369,7 @@ export async function completeDay2Draft() {
 
   await db
     .update(seasons)
-    .set({ day2Complete: true, day2DraftComplete: true, currentDay: 2 })
+    .set({ day2DraftComplete: true, currentDay: 2 })
     .where(eq(seasons.id, seasonId));
   await notifySeasonChange(seasonId);
   return { ok: true };

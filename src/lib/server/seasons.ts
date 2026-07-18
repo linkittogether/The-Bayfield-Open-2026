@@ -4,6 +4,7 @@ import { desc, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { seasons } from "@/db/schema";
+import { getCurrentUser } from "@/lib/session";
 import { requireAdmin } from "./auth-guards";
 
 export type Season = typeof seasons.$inferSelect;
@@ -29,6 +30,19 @@ export async function listSeasons(): Promise<Season[]> {
     .from(seasons)
     .where(eq(seasons.hidden, false))
     .orderBy(desc(seasons.year));
+}
+
+/**
+ * The season regular users should land on. Normally the current season, but if
+ * the current season is hidden (e.g. a dry-run sandbox is temporarily made
+ * current so it's writable), fall back to the most recent visible season so the
+ * public home page never routes people into the sandbox.
+ */
+export async function getLandingSeason(): Promise<Season> {
+  const current = await getCurrentSeason();
+  if (!current.hidden) return current;
+  const [latestVisible] = await listSeasons(); // non-hidden, year desc
+  return latestVisible ?? current;
 }
 
 export async function getSeasonByYear(year: number): Promise<Season | null> {
@@ -60,8 +74,12 @@ export async function getSeasonView(year: number) {
     getCurrentSeason(),
   ]);
   if (!viewed) notFound();
-  // A hidden season is only reachable if it's somehow the current one.
-  if (viewed.hidden && viewed.id !== current.id) notFound();
+  // Hidden (dry-run) seasons stay out of the switcher (see listSeasons) but are
+  // reachable by direct URL for admins only — everyone else still 404s.
+  if (viewed.hidden && viewed.id !== current.id) {
+    const user = await getCurrentUser();
+    if (user?.kind !== "admin") notFound();
+  }
   return { viewed, current, readOnly: viewed.id !== current.id };
 }
 

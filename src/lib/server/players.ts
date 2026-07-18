@@ -37,6 +37,8 @@ const updatePlayerSchema = z
     handicap: z.coerce.number().min(0).optional(),
     pin: z.string().regex(PIN_PATTERN).optional(),
     photoUrl: z.string().nullable().optional(),
+    // Full legal name for external comms. Empty string clears it.
+    fullName: z.string().trim().optional(),
     // Google SSO email. Empty string clears it.
     email: z.union([z.email(), z.literal("")]).optional(),
     isAdmin: z.boolean().optional(),
@@ -48,6 +50,7 @@ const updatePlayerSchema = z
 const playerListColumns = {
   id: players.id,
   name: players.name,
+  fullName: players.fullName,
   photoUrl: players.photoUrl,
   handicap: players.handicap,
   email: players.email,
@@ -141,6 +144,7 @@ export async function updatePlayer(
   const data = updatePlayerSchema.parse(input);
   const update: Partial<typeof players.$inferInsert> = {};
   if (data.name !== undefined) update.name = data.name;
+  if (data.fullName !== undefined) update.fullName = data.fullName || null;
   if (data.handicap !== undefined) update.handicap = data.handicap;
   if (data.photoUrl !== undefined) update.photoUrl = data.photoUrl;
   if (data.pin !== undefined) {

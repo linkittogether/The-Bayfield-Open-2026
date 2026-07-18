@@ -1,5 +1,6 @@
 import { Lock, Trophy, Users } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { LockDraftButton } from "@/components/lock-draft-button";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { formatNet, ordinal } from "@/lib/format";
 import { getDay1PicksOverview } from "@/lib/server/day1";
@@ -85,12 +86,26 @@ export default async function Day1PicksPage({
 
   return (
     <AppShell title="Partner Selection" showBack backTo={`/${yr}/day1/leaderboard`} year={yr}>
-      <div className="bg-accent border border-secondary/30 rounded-2xl p-4 mb-5">
-        <p className="text-sm font-semibold mb-1">How it works</p>
-        <p className="text-xs text-muted-foreground">
-          Starting with the 10th place player, each player picks a partner from the bottom 10. Then 9th, 8th... down to 1st.
-        </p>
-      </div>
+      {data.nextPicker ? (
+        <div className="bg-accent border border-secondary/30 rounded-2xl p-4 mb-5">
+          <p className="text-sm font-semibold mb-1">How it works</p>
+          <p className="text-xs text-muted-foreground">
+            Starting with the 10th place player, each player picks a partner from the bottom 10. Then 9th, 8th... down to 1st.
+          </p>
+        </div>
+      ) : data.state?.day1PickingStarted ? (
+        // All pairs are made but the draft isn't locked yet — offer the lock here
+        // too (same action as the home "next step" tile).
+        <div className="bg-accent border border-secondary/40 rounded-2xl p-4 mb-5">
+          <p className="font-bold text-lg font-heading">All pairs are set</p>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {isAdmin && !readOnly
+              ? "Review the pairs below, then lock the draft to start Day 2."
+              : "Waiting for the organizer to lock the pairs."}
+          </p>
+          {isAdmin && !readOnly && <LockDraftButton />}
+        </div>
+      ) : null}
 
       {data.nextPicker && data.nextPickerRank !== null && (
         <div className="mb-5">

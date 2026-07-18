@@ -1,14 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check, ChevronRight, Flag, Settings, Shield, Trophy, Users } from "lucide-react";
+import { AdminCompleteButton } from "@/components/admin-complete-button";
 import { AppShell } from "@/components/app-shell";
+import { Countdown } from "@/components/countdown";
 import { CloseDay1Button } from "@/components/close-day1-button";
+import { LockDraftButton } from "@/components/lock-draft-button";
 import { cn } from "@/lib/utils";
 import { formatNet } from "@/lib/format";
 import { getActiveRoster } from "@/lib/server/players";
 import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
-import { getDay2Leaderboard } from "@/lib/server/day2";
-import { getDay3Matches } from "@/lib/server/day3";
+import { completeDay2, getDay2Leaderboard } from "@/lib/server/day2";
+import {
+  completeDay3,
+  getDay3Leaderboard,
+  getDay3Matches,
+} from "@/lib/server/day3";
 import { getCourseNamesByDay } from "@/lib/server/courses";
 import { getSeasonState } from "@/lib/server/tournament";
 import { getSeasonView } from "@/lib/server/seasons";
@@ -22,7 +29,7 @@ export default async function HomePage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
-  const [user, state, playerList, day1Lb, picks, matches, day2Lb, courseNames] =
+  const [user, state, playerList, day1Lb, picks, matches, day2Lb, day3Lb, courseNames] =
     await Promise.all([
       getCurrentUser(),
       getSeasonState(season.id),
@@ -31,6 +38,7 @@ export default async function HomePage({
       getDay1PicksOverview(season.id),
       getDay3Matches(season.id),
       getDay2Leaderboard(season.id),
+      getDay3Leaderboard(season.id),
       getCourseNamesByDay(season.id),
     ]);
   // Prefer the season's course name for each day's card; fall back to the
@@ -42,6 +50,17 @@ export default async function HomePage({
   const userId = user?.kind === "player" ? user.player.id : null;
   // All Day-2 stroke rounds scored for every pair → the Day 3 team draft opens.
   const day2AllScored = day2Lb.length > 0 && day2Lb.every((e) => e.complete);
+  // Once the season is complete, the stage stack is replaced by the two trophies.
+  const seasonComplete = !!state?.day3Complete;
+  const pairsChamp = day2Lb[0] ?? null;
+  const hc = day3Lb.summary;
+  const huronTie = hc.trufflePoints === hc.syndicatePoints;
+  const truffleWonCup = hc.trufflePoints > hc.syndicatePoints;
+
+  // Day 3 is "ready to complete" once every match has been decided (match play
+  // closes out before 18 holes).
+  const day3AllDecided =
+    matches.length > 0 && matches.every((m) => m.status === "final");
   const nextStep = readOnly
     ? null
     : computeNextStep({
@@ -53,6 +72,7 @@ export default async function HomePage({
         matches,
         rosterCount: playerList.length,
         day2AllScored,
+        day3AllDecided,
       });
   if (nextStep) {
     nextStep.href = `/${yr}${nextStep.href}`;
@@ -63,6 +83,9 @@ export default async function HomePage({
       }));
     }
   }
+  // Player "your turn" tiles are solid green; admin action tiles use the calmer
+  // cream/accent look (like the Grint pull tiles) with a solid green button.
+  const tileGreen = !!nextStep?.urgent && nextStep?.audience !== "admin";
   const stepEyebrow =
     nextStep?.audience === "admin" ? (
       <span className="inline-flex items-center gap-1">
@@ -92,15 +115,25 @@ export default async function HomePage({
           <p className="text-green-100 text-sm">
             {playerList.length} players · 3 days · All The Mushrooms
           </p>
+          {/* Countdown to tee-off, only on the live season (hides once it starts). */}
+          {!readOnly && (
+            <div className="mt-4 flex justify-center">
+              <Countdown />
+            </div>
+          )}
         </div>
       </div>
 
       {nextStep &&
-        (nextStep.actions || nextStep.closeDay1 ? (
+        (nextStep.actions ||
+        nextStep.closeDay1 ||
+        nextStep.lockPartnerDraft ||
+        nextStep.closeDay2 ||
+        nextStep.completeDay3 ? (
           <div
             className={cn(
               "rounded-2xl p-4 mb-5 border-2",
-              nextStep.urgent
+              tileGreen
                 ? "bg-primary text-white border-primary"
                 : "bg-accent border-secondary/40",
             )}
@@ -109,7 +142,7 @@ export default async function HomePage({
               <div
                 className={cn(
                   "w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl",
-                  nextStep.urgent ? "bg-white/20" : "bg-secondary/15",
+                  tileGreen ? "bg-white/20" : "bg-secondary/15",
                 )}
               >
                 {nextStep.emoji}
@@ -118,7 +151,7 @@ export default async function HomePage({
                 <p
                   className={cn(
                     "text-[10px] font-bold uppercase tracking-widest mb-0.5",
-                    nextStep.urgent ? "text-green-200" : "text-secondary",
+                    tileGreen ? "text-green-200" : "text-secondary",
                   )}
                 >
                   {stepEyebrow}
@@ -126,7 +159,7 @@ export default async function HomePage({
                 <p
                   className={cn(
                     "font-bold text-base leading-snug",
-                    nextStep.urgent ? "text-white" : "text-foreground",
+                    tileGreen ? "text-white" : "text-foreground",
                   )}
                 >
                   {nextStep.label}
@@ -135,7 +168,7 @@ export default async function HomePage({
                   <p
                     className={cn(
                       "text-xs mt-0.5",
-                      nextStep.urgent ? "text-green-200" : "text-muted-foreground",
+                      tileGreen ? "text-green-200" : "text-muted-foreground",
                     )}
                   >
                     {nextStep.sub}
@@ -145,13 +178,22 @@ export default async function HomePage({
             </div>
             {nextStep.closeDay1 ? (
               <CloseDay1Button />
+            ) : nextStep.lockPartnerDraft ? (
+              <LockDraftButton />
+            ) : nextStep.closeDay2 ? (
+              <AdminCompleteButton action={completeDay2} label="Close Day 2 scoring" confirmLabel="Yes, close scoring" />
+            ) : nextStep.completeDay3 ? (
+              <AdminCompleteButton action={completeDay3} label="Complete Day 3" confirmLabel="Yes, finalize the Huron Cup" />
             ) : (
               <div className="grid grid-cols-2 gap-2 mt-3">
                 {nextStep.actions?.map((a) => (
                   <Link
                     key={a.href}
                     href={a.href}
-                    className="h-11 rounded-xl bg-white text-primary font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                    className={cn(
+                      "h-11 rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 transition-transform",
+                      tileGreen ? "bg-white text-primary" : "bg-primary text-white",
+                    )}
                   >
                     {a.label}
                   </Link>
@@ -164,7 +206,7 @@ export default async function HomePage({
             <div
               className={cn(
                 "rounded-2xl p-4 mb-5 flex items-center gap-4 active:scale-[0.98] transition-transform border-2",
-                nextStep.urgent
+                tileGreen
                   ? "bg-primary text-white border-primary"
                   : "bg-accent border-secondary/40",
               )}
@@ -172,7 +214,7 @@ export default async function HomePage({
               <div
                 className={cn(
                   "w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 text-xl",
-                  nextStep.urgent ? "bg-white/20" : "bg-secondary/15",
+                  tileGreen ? "bg-white/20" : "bg-secondary/15",
                 )}
               >
                 {nextStep.emoji}
@@ -181,7 +223,7 @@ export default async function HomePage({
                 <p
                   className={cn(
                     "text-[10px] font-bold uppercase tracking-widest mb-0.5",
-                    nextStep.urgent ? "text-green-200" : "text-secondary",
+                    tileGreen ? "text-green-200" : "text-secondary",
                   )}
                 >
                   {stepEyebrow}
@@ -189,7 +231,7 @@ export default async function HomePage({
                 <p
                   className={cn(
                     "font-bold text-base leading-snug",
-                    nextStep.urgent ? "text-white" : "text-foreground",
+                    tileGreen ? "text-white" : "text-foreground",
                   )}
                 >
                   {nextStep.label}
@@ -198,19 +240,55 @@ export default async function HomePage({
                   <p
                     className={cn(
                       "text-xs mt-0.5",
-                      nextStep.urgent ? "text-green-200" : "text-muted-foreground",
+                      tileGreen ? "text-green-200" : "text-muted-foreground",
                     )}
                   >
                     {nextStep.sub}
                   </p>
                 )}
               </div>
-              <ArrowRight size={20} className={nextStep.urgent ? "text-white/80" : "text-muted-foreground"} />
+              <ArrowRight size={20} className={tileGreen ? "text-white/80" : "text-muted-foreground"} />
             </div>
           </Link>
         ))}
 
+      {seasonComplete ? (
+        <div className="flex flex-col gap-3 mb-5">
+          <ChampionTile
+            href={`/${yr}/day2/leaderboard`}
+            eyebrow="Pairs Champion"
+            emoji="🏆"
+            title={
+              pairsChamp
+                ? `${pairsChamp.player1Name} & ${pairsChamp.player2Name}`
+                : "—"
+            }
+            subtitle={
+              pairsChamp?.combinedNet != null
+                ? `Combined net ${formatNet(pairsChamp.combinedNet)}`
+                : "Pairs competition"
+            }
+            tone="gold"
+          />
+          <ChampionTile
+            href={`/${yr}/day3/leaderboard`}
+            eyebrow="Huron Cup"
+            emoji={huronTie ? "🤝" : truffleWonCup ? "🐗" : "🍄"}
+            title={
+              huronTie
+                ? "It's a Draw"
+                : truffleWonCup
+                  ? "Truffle Hogs"
+                  : "Mycelium Syndicate"
+            }
+            subtitle={`${hc.trufflePoints}–${hc.syndicatePoints} · Huron Cup ${season.year}`}
+            tone={huronTie ? "muted" : truffleWonCup ? "truffle" : "syndicate"}
+          />
+        </div>
+      ) : (
       <div className="flex flex-col gap-3 mb-5">
+        {/* Day 1 has no per-card completion button — the "next step" tile above
+            already surfaces "Close scoring & start picks" (CloseDay1Button). */}
         <DayCard day={1} title={`Day 1 — ${dayLabel(1, "Just You")}`} subtitle="9 holes · Solo, net" complete={state?.day1Complete} href={`/${yr}/day1/leaderboard`} icon={<Trophy size={22} className="text-gold" />} />
         {state?.day1Complete && (
           <Link href={`/${yr}/day1/picks`} className="-mt-1 ml-8">
@@ -230,7 +308,9 @@ export default async function HomePage({
                     ? "Teams set"
                     : picks.nextPicker
                       ? `${picks.nextPicker.name} is picking`
-                      : "Draft in progress"}
+                      : state.day1PickingStarted
+                        ? "Pairs set — lock to finalize"
+                        : "Draft not started"}
                 </p>
               </div>
               {state.day1PickingComplete ? (
@@ -241,8 +321,10 @@ export default async function HomePage({
             </div>
           </Link>
         )}
-        <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
-        {day2AllScored && (
+        {/* Partner draft is locked from the "next step" tile (LockDraftButton),
+            not a card button — keeps a single completion affordance. */}
+        <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
+        {state?.day2Complete && (
           <Link href={`/${yr}/day2/draft`} className="-mt-1 ml-8">
             <div
               className={cn(
@@ -267,8 +349,11 @@ export default async function HomePage({
             </div>
           </Link>
         )}
+        {/* Day 2 / Match Play Draft / Day 3 completions live in the "next step"
+            tile at the top, not as card buttons. */}
         <DayCard day={3} title={`Day 3 — ${dayLabel(3, "10 v 10")}`} subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
       </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 mb-5">
         <Link href={`/${yr}/day2/draft`}>
@@ -297,6 +382,57 @@ export default async function HomePage({
         </Link>
       )}
     </AppShell>
+  );
+}
+
+// Season-complete summary tile: the Pairs champion and the Huron Cup winner
+// replace the stage stack once the tournament is over.
+function ChampionTile({
+  href,
+  eyebrow,
+  emoji,
+  title,
+  subtitle,
+  tone,
+}: {
+  href: string;
+  eyebrow: string;
+  emoji: string;
+  title: string;
+  subtitle: string;
+  tone: "gold" | "truffle" | "syndicate" | "muted";
+}) {
+  const toneClass =
+    tone === "truffle"
+      ? "bg-truffle-light border-truffle/30"
+      : tone === "syndicate"
+        ? "bg-syndicate-light border-syndicate/30"
+        : tone === "gold"
+          ? "bg-gold/10 border-gold/30"
+          : "bg-muted border-border";
+  return (
+    <Link href={href}>
+      <div
+        className={cn(
+          "rounded-2xl p-5 border flex items-center gap-4 active:scale-[0.98] transition-transform",
+          toneClass,
+        )}
+      >
+        <div className="w-14 h-14 rounded-full bg-white/70 flex items-center justify-center text-3xl flex-shrink-0">
+          {emoji}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-medium">
+            {eyebrow}
+          </p>
+          <p className="text-xl font-bold font-heading leading-tight truncate">
+            {title}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
+        </div>
+        <Trophy size={20} className="text-gold flex-shrink-0" />
+      </div>
+    </Link>
   );
 }
 
@@ -335,7 +471,11 @@ function DayCard({
           <p className="font-semibold text-sm">{title}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
-        <ChevronRight size={16} className="text-muted-foreground flex-shrink-0" />
+        {complete ? (
+          <Check size={18} className="text-green-600 flex-shrink-0" />
+        ) : (
+          <ChevronRight size={16} className="text-muted-foreground flex-shrink-0" />
+        )}
       </div>
     </Link>
   );
@@ -355,6 +495,12 @@ type NextStep = {
   actions?: { label: string; href: string }[];
   // When true, the tile renders the "close Day 1 scoring" action button.
   closeDay1?: boolean;
+  // When true, the tile renders the "lock the partner draft" action button.
+  lockPartnerDraft?: boolean;
+  // When true, the tile renders the "close Day 2 scoring" action button.
+  closeDay2?: boolean;
+  // When true, the tile renders the "complete Day 3" action button.
+  completeDay3?: boolean;
 };
 
 function computeNextStep(args: {
@@ -366,12 +512,34 @@ function computeNextStep(args: {
   matches: Awaited<ReturnType<typeof getDay3Matches>>;
   rosterCount: number;
   day2AllScored: boolean;
+  day3AllDecided: boolean;
 }): NextStep | null {
-  const { state, userId, isAdmin, day1Lb, picks, matches, rosterCount, day2AllScored } =
-    args;
+  const {
+    state,
+    userId,
+    isAdmin,
+    day1Lb,
+    picks,
+    matches,
+    rosterCount,
+    day2AllScored,
+    day3AllDecided,
+  } = args;
   if (!state) return null;
 
-  if (!state.day3Complete && (state.day2Complete || state.day2DraftComplete)) {
+  if (!state.day3Complete && state.day2DraftComplete) {
+    // Admin can finalize the Huron Cup once every match is decided.
+    if (isAdmin && day3AllDecided) {
+      return {
+        label: "Complete Day 3",
+        sub: "Every match is decided — finalize the Huron Cup.",
+        href: "/day3/leaderboard",
+        emoji: "🏁",
+        urgent: true,
+        audience: "admin",
+        completeDay3: true,
+      };
+    }
     if (matches && matches.length > 0 && userId) {
       const myMatch = matches.find(
         (m) => m.trufflePlayerId === userId || m.syndicatePlayerId === userId,
@@ -403,25 +571,56 @@ function computeNextStep(args: {
     };
   }
 
-  if (state.day3Complete) {
-    return {
-      label: "See who won the Huron Cup",
-      sub: "Tournament complete — final results are in!",
-      href: "/day3/leaderboard",
-      emoji: "🏆",
-      urgent: false,
-    };
-  }
+  // Season complete → no "next step"; the Pairs/Huron Cup champion tiles are the
+  // summary (see the seasonComplete block in the page body).
+  if (state.day3Complete) return null;
 
-  if (state.day1PickingComplete && !state.day2Complete && !state.day2DraftComplete) {
-    // All Day-2 rounds are in → the next step is drafting the Day 3 teams.
+  if (state.day1PickingComplete && !state.day2DraftComplete) {
     if (day2AllScored) {
+      // Admin: close Day 2 scoring, then draft the Sunday matchups. Saving the
+      // matchups finalizes the draft (day2DraftComplete) and starts Day 3.
+      if (isAdmin) {
+        if (!state.day2Complete) {
+          return {
+            label: "Close Day 2 scoring",
+            sub: "All pairs are in — lock the Pairs standings.",
+            href: "/day2/leaderboard",
+            emoji: "🔒",
+            urgent: true,
+            audience: "admin",
+            closeDay2: true,
+          };
+        }
+        return {
+          label: "Match Play Draft",
+          sub: "Draft the Sunday matchups",
+          href: "/day3/setup",
+          emoji: "⚔️",
+          urgent: true,
+          audience: "admin",
+        };
+      }
+      // Everyone else: the draft is underway.
       return {
         label: "Match Play Draft",
-        sub: "Day 2 is in — draft the 10 v 10 teams for Day 3",
-        href: "/day2/draft",
+        sub: "Day 2 is in — the 10 v 10 teams are being drafted",
+        href: "/day3/setup",
         emoji: "⚔️",
+        urgent: false,
+      };
+    }
+    if (isAdmin) {
+      // Admin drives Day 2 like Day 1: an actionable score-entry prompt (not a
+      // passive "view leaderboard"). Once every pair is scored, the day2AllScored
+      // branch above advances to the Match Play Draft, and the Day 2 card shows
+      // its "Close Day 2 scoring" button.
+      return {
+        label: "Enter everyone's Day 2 scores",
+        sub: "27 holes · pull from The Grint or enter manually",
+        href: "/day2/scores",
+        emoji: "🤝",
         urgent: true,
+        audience: "admin",
       };
     }
     if (userId) {
@@ -464,6 +663,28 @@ function computeNextStep(args: {
         sub: `Waiting for ${nextPicker.name} to pick`,
         href: "/day1/picks",
         emoji: "🤜",
+        urgent: false,
+      };
+    }
+    // No next picker but picking isn't locked → all pairs are made, awaiting an
+    // admin lock (the draft no longer auto-locks on the final pick).
+    if (state.day1PickingStarted) {
+      if (isAdmin) {
+        return {
+          label: "Lock the partner draft",
+          sub: "All pairs are set — lock them in to start Day 2.",
+          href: "/day1/picks",
+          emoji: "🔒",
+          urgent: true,
+          audience: "admin",
+          lockPartnerDraft: true,
+        };
+      }
+      return {
+        label: "Partner draft complete",
+        sub: "Waiting for the organizer to lock the pairs",
+        href: "/day1/picks",
+        emoji: "🤝",
         urgent: false,
       };
     }

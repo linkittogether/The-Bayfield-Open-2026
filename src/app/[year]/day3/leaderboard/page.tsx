@@ -33,7 +33,14 @@ export default async function Day3LeaderboardPage({
   const userId = user?.kind === "player" ? user.player.id : null;
   const allRoster = [...teams.truffleHogs, ...teams.myceliumSyndicate];
   const isCaptain = userId !== null && allRoster.some((p) => p.playerId === userId && p.isCaptain);
-  const canSetupMatches = !readOnly && (isAdmin || isCaptain);
+  // Match setup is offered only once Day 2 scoring is closed and until the
+  // matchups are finalized (day2DraftComplete) — after that, re-drafting would
+  // wipe scored matches.
+  const canSetupMatches =
+    !readOnly &&
+    (isAdmin || isCaptain) &&
+    season.day2Complete &&
+    !season.day2DraftComplete;
 
   const s = lb.summary;
   const trufflePts = s.trufflePoints;
@@ -113,7 +120,7 @@ export default async function Day3LeaderboardPage({
       {(truffleNet?.net != null || syndicateNet?.net != null) && (
         <div className="bg-white border border-border rounded-2xl p-4 mb-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider text-center">
-            Team Net · nice-to-have
+            Team Net
           </p>
           <p className="text-[11px] text-muted-foreground text-center mb-3">
             Combined stroke-play net — informational; the cup is decided by match play
@@ -148,11 +155,15 @@ export default async function Day3LeaderboardPage({
         <div className="text-center py-10">
           <Flag size={40} className="mx-auto mb-3 text-muted-foreground" />
           <p className="font-semibold text-muted-foreground">No matches set up yet</p>
-          {canSetupMatches && (
+          {canSetupMatches ? (
             <Link href={`/${yr}/day3/setup`} className="mt-3 inline-block text-sm text-primary underline">
               Set up matches →
             </Link>
-          )}
+          ) : !readOnly && (isAdmin || isCaptain) && !season.day2Complete ? (
+            <p className="text-sm text-muted-foreground mt-1">
+              Matchups can be set up once Day 2 scoring is closed
+            </p>
+          ) : null}
         </div>
       ) : (
         <>

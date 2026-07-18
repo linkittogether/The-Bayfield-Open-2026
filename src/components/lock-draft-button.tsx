@@ -1,15 +1,16 @@
 "use client";
 
+import { Check, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Check, Lock } from "lucide-react";
-import { completeDay1 } from "@/lib/server/day1";
+import { completePartnerDraft } from "@/lib/server/day1";
 
 /**
- * Home-tile action: close Day 1 scoring (one-way) and open partner picking.
+ * Home-tile action: lock the partner draft once all pairs are made. Picking no
+ * longer auto-locks (see submitDay1Pick), so an admin confirms the pairs here.
  * Styled for the urgent (primary-background) next-step tile.
  */
-export function CloseDay1Button() {
+export function LockDraftButton() {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirming, setConfirming] = useState(false);
@@ -19,10 +20,10 @@ export function CloseDay1Button() {
     setError(null);
     start(async () => {
       try {
-        await completeDay1();
+        await completePartnerDraft();
         router.refresh();
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to close Day 1");
+        setError(e instanceof Error ? e.message : "Failed to lock the draft");
       }
     });
   }
@@ -44,7 +45,7 @@ export function CloseDay1Button() {
             disabled={pending}
             className="h-11 rounded-xl bg-primary text-white font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-60"
           >
-            <Check size={16} /> {pending ? "Closing…" : "Yes, close & start picks"}
+            <Check size={16} /> {pending ? "Locking…" : "Yes, lock the pairs"}
           </button>
         </div>
       ) : (
@@ -53,7 +54,7 @@ export function CloseDay1Button() {
           onClick={() => setConfirming(true)}
           className="w-full h-11 rounded-xl bg-primary text-white font-semibold text-sm flex items-center justify-center gap-1.5 active:scale-95"
         >
-          <Lock size={15} /> Close scoring &amp; start picks
+          <Lock size={15} /> Lock the partner draft
         </button>
       )}
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}

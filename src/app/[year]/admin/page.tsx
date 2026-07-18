@@ -2,13 +2,15 @@ import Link from "next/link";
 import { Flag, Lock, Plus, Shield } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { BulkHandicapPull } from "@/components/bulk-handicap-pull";
+import { PairingsEmail } from "@/components/pairings-email";
 import { Button } from "@/components/ui/button";
+import { getPairingsEmailText } from "@/lib/server/day1";
 import {
   getActiveRoster,
   listPlayers,
   listSeasonHandicapLocks,
 } from "@/lib/server/players";
-import { getCurrentSeason } from "@/lib/server/seasons";
+import { getCurrentSeason, getSeasonByYear } from "@/lib/server/seasons";
 import { getCurrentUser } from "@/lib/session";
 import { PlayerEditor } from "./player-editor";
 import { ResetButton } from "./reset-button";
@@ -66,6 +68,12 @@ export default async function AdminPage({
     listSeasonHandicapLocks(season.id),
     getActiveRoster(season.id),
   ]);
+  // Pairings email is scoped to the viewed year (so a past season's pairings can
+  // be re-sent); null until that season's pairs are locked.
+  const viewedSeason = await getSeasonByYear(yr);
+  const pairingsEmail = viewedSeason
+    ? await getPairingsEmailText(viewedSeason.id)
+    : null;
 
   return (
     <AppShell title="Admin Panel" showBack backTo={`/${yr}`} year={yr}>
@@ -104,10 +112,15 @@ export default async function AdminPage({
           />
         </div>
 
+        {pairingsEmail && (
+          <PairingsEmail subject={pairingsEmail.subject} body={pairingsEmail.body} />
+        )}
+
         <PlayerEditor
           players={players.map((p) => ({
             id: p.id,
             name: p.name,
+            fullName: p.fullName,
             photoUrl: p.photoUrl,
             handicap: p.handicap,
             pin: p.pin,

@@ -35,6 +35,7 @@ const other = (s: MatchDraftSide): MatchDraftSide =>
 export function SetupBuilder({
   year,
   draft,
+  canSetup,
   isAdmin,
   viewerSide,
   truffle,
@@ -44,6 +45,8 @@ export function SetupBuilder({
 }: {
   year: number;
   draft: MatchDraft | null;
+  /** Admin/captain on the live season may drive the draft; others spectate. */
+  canSetup: boolean;
   isAdmin: boolean;
   viewerSide: MatchDraftSide | null;
   truffle: RosterPlayer[];
@@ -135,8 +138,16 @@ export function SetupBuilder({
     );
   }
 
-  // Pre-start: choose who nominates first.
+  // Pre-start: choose who nominates first (spectators just wait).
   if (!started) {
+    if (!canSetup) {
+      return (
+        <p className="text-sm text-muted-foreground py-10 text-center">
+          The captains haven&apos;t started the match draft yet. Pairings will
+          appear here live as they&apos;re picked.
+        </p>
+      );
+    }
     return (
       <div className="py-6">
         <p className="text-sm text-muted-foreground mb-4 text-center">
@@ -269,23 +280,29 @@ export function SetupBuilder({
       )}
 
       {done ? (
-        <Button
-          onClick={save}
-          disabled={pending || saved}
-          className={cn("w-full h-12 text-base", saved && "bg-green-500 hover:bg-green-500")}
-        >
-          {saved ? (
-            <>
-              <Check size={18} /> Matches Set!
-            </>
-          ) : pending ? (
-            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <>
-              <Trophy size={18} /> Save Matchups & Start Day 3
-            </>
-          )}
-        </Button>
+        canSetup ? (
+          <Button
+            onClick={save}
+            disabled={pending || saved}
+            className={cn("w-full h-12 text-base", saved && "bg-green-500 hover:bg-green-500")}
+          >
+            {saved ? (
+              <>
+                <Check size={18} /> Matches Set!
+              </>
+            ) : pending ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <Trophy size={18} /> Save Matchups & Start Day 3
+              </>
+            )}
+          </Button>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-2">
+            All matchups are set — waiting for the captains to start Day 3.
+          </p>
+        )
       ) : (
         isAdmin && (
           <button

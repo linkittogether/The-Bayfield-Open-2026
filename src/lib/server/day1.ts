@@ -222,17 +222,19 @@ export async function submitDay1Pick(input: z.input<typeof submitPickSchema>) {
     });
 
     const nextRank = picker.rank - 1;
-    const pickingComplete = nextRank < 1;
+    const allPicked = nextRank < 1;
     await tx
       .update(seasons)
       .set({
-        nextPickerRank: pickingComplete ? null : nextRank,
+        // When the last picker (rank 1) has chosen, there's no next picker, but
+        // the draft is NOT auto-locked — an admin locks it via
+        // completePartnerDraft so the pairs can be reviewed first.
+        nextPickerRank: allPicked ? null : nextRank,
         day1PickingStarted: true,
-        day1PickingComplete: pickingComplete,
       })
       .where(eq(seasons.id, seasonId));
 
-    return { pickingComplete };
+    return { allPicked };
   });
   await notifySeasonChange(seasonId);
   return result;

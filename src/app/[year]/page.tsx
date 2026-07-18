@@ -4,14 +4,11 @@ import { ArrowRight, Check, ChevronRight, Flag, Settings, Shield, Trophy, Users 
 import { AdminCompleteButton } from "@/components/admin-complete-button";
 import { AppShell } from "@/components/app-shell";
 import { CloseDay1Button } from "@/components/close-day1-button";
+import { LockDraftButton } from "@/components/lock-draft-button";
 import { cn } from "@/lib/utils";
 import { formatNet } from "@/lib/format";
 import { getActiveRoster } from "@/lib/server/players";
-import {
-  completePartnerDraft,
-  getDay1Leaderboard,
-  getDay1PicksOverview,
-} from "@/lib/server/day1";
+import { getDay1Leaderboard, getDay1PicksOverview } from "@/lib/server/day1";
 import {
   completeDay2,
   completeDay2Draft,
@@ -70,10 +67,7 @@ export default async function HomePage({
 
   // Per-stage "ready to close out" gates — a stage's admin completion button only
   // appears once that stage can actually be completed, not merely "not yet done".
-  // (Day 1 is closed via the "next step" tile's CloseDay1Button, not a card button.)
-  // Partner picking: every eligible partner (bottom half) has been chosen.
-  const partnerDraftReady =
-    !!state?.day1PickingStarted && picks.available.length === 0;
+  // (Day 1 close + partner-draft lock live in the "next step" tile, not card buttons.)
   // Match Play Draft: every Day-1 scorer is assigned to a team, both teams active
   // (mirrors the validation inside completeDay2Draft).
   const assignedIds = new Set(draftOverview.selected.map((s) => s.playerId));
@@ -141,7 +135,7 @@ export default async function HomePage({
       </div>
 
       {nextStep &&
-        (nextStep.actions || nextStep.closeDay1 ? (
+        (nextStep.actions || nextStep.closeDay1 || nextStep.lockPartnerDraft ? (
           <div
             className={cn(
               "rounded-2xl p-4 mb-5 border-2",
@@ -190,6 +184,8 @@ export default async function HomePage({
             </div>
             {nextStep.closeDay1 ? (
               <CloseDay1Button />
+            ) : nextStep.lockPartnerDraft ? (
+              <LockDraftButton />
             ) : (
               <div className="grid grid-cols-2 gap-2 mt-3">
                 {nextStep.actions?.map((a) => (
@@ -311,7 +307,9 @@ export default async function HomePage({
                     ? "Teams set"
                     : picks.nextPicker
                       ? `${picks.nextPicker.name} is picking`
-                      : "Draft in progress"}
+                      : state.day1PickingStarted
+                        ? "Pairs set — lock to finalize"
+                        : "Draft not started"}
                 </p>
               </div>
               {state.day1PickingComplete ? (
@@ -322,9 +320,8 @@ export default async function HomePage({
             </div>
           </Link>
         )}
-        {canAdminComplete && state?.day1Complete && !state?.day1PickingComplete && partnerDraftReady && (
-          <AdminCompleteButton action={completePartnerDraft} label="Finalize Partner Draft" confirmLabel="Set teams" indent />
-        )}
+        {/* Partner draft is locked from the "next step" tile (LockDraftButton),
+            not a card button — keeps a single completion affordance. */}
         <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete || day2AllScored} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
         {canAdminComplete && state?.day1PickingComplete && !state?.day2Complete && day2AllScored && (
           <AdminCompleteButton action={completeDay2} label="Close Day 2 scoring" confirmLabel="Close scoring" />
@@ -500,6 +497,8 @@ type NextStep = {
   actions?: { label: string; href: string }[];
   // When true, the tile renders the "close Day 1 scoring" action button.
   closeDay1?: boolean;
+  // When true, the tile renders the "lock the partner draft" action button.
+  lockPartnerDraft?: boolean;
 };
 
 function computeNextStep(args: {
@@ -623,6 +622,28 @@ function computeNextStep(args: {
         sub: `Waiting for ${nextPicker.name} to pick`,
         href: "/day1/picks",
         emoji: "🤜",
+        urgent: false,
+      };
+    }
+    // No next picker but picking isn't locked → all pairs are made, awaiting an
+    // admin lock (the draft no longer auto-locks on the final pick).
+    if (state.day1PickingStarted) {
+      if (isAdmin) {
+        return {
+          label: "Lock the partner draft",
+          sub: "All pairs are set — lock them in to start Day 2.",
+          href: "/day1/picks",
+          emoji: "🔒",
+          urgent: true,
+          audience: "admin",
+          lockPartnerDraft: true,
+        };
+      }
+      return {
+        label: "Partner draft complete",
+        sub: "Waiting for the organizer to lock the pairs",
+        href: "/day1/picks",
+        emoji: "🤝",
         urgent: false,
       };
     }

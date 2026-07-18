@@ -80,7 +80,7 @@ export default async function Day1LeaderboardPage({
           <Trophy size={40} className="mx-auto mb-3 text-muted-foreground" />
           <p className="font-semibold text-muted-foreground">No scores yet</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Register players and enter scores to see the leaderboard
+            Scores will appear here as they&apos;re entered
           </p>
         </div>
       ) : (

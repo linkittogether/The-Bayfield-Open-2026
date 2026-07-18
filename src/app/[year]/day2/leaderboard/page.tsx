@@ -80,8 +80,9 @@ export default async function Day2LeaderboardPage({
         </div>
       )}
 
-      {/* Score entry is hidden once Day 2 scoring is closed. */}
-      {!readOnly && !champions && (
+      {/* Day 2 score entry (manual + Grint) is only possible once pairs are set
+          (day1PickingComplete) and until Day 2 scoring is closed. */}
+      {!readOnly && !champions && state?.day1PickingComplete && (
         <div className="mb-5">
           <Button asChild className="w-full h-11">
             <Link href={`/${yr}/day2/scores`}>
@@ -91,7 +92,7 @@ export default async function Day2LeaderboardPage({
         </div>
       )}
 
-      {!readOnly && isAdmin && (
+      {!readOnly && isAdmin && !champions && state?.day1PickingComplete && (
         <div className="mb-5">
           <BulkGrintPull day={2} />
         </div>
@@ -105,12 +106,20 @@ export default async function Day2LeaderboardPage({
         <div className="bg-muted rounded-2xl p-8 text-center">
           <Trophy size={40} className="mx-auto mb-3 text-muted-foreground" />
           <p className="font-semibold text-muted-foreground">No pairs yet</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            Complete Day 1 partner selection first
-          </p>
-          <Link href={`/${yr}/day1/picks`} className="mt-3 inline-block text-sm text-primary underline">
-            Go to partner selection →
-          </Link>
+          {state?.day1Complete ? (
+            <>
+              <p className="text-sm text-muted-foreground mt-1">
+                Complete Day 1 partner selection first
+              </p>
+              <Link href={`/${yr}/day1/picks`} className="mt-3 inline-block text-sm text-primary underline">
+                Go to partner selection →
+              </Link>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-1">
+              Day 1 scoring must be completed first
+            </p>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

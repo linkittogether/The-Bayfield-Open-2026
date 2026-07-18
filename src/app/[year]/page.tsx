@@ -324,7 +324,7 @@ export default async function HomePage({
         {/* Partner draft is locked from the "next step" tile (LockDraftButton),
             not a card button — keeps a single completion affordance. */}
         <DayCard day={2} title={`Day 2 — ${dayLabel(2, "Partner Up")}`} subtitle="27 holes · Pairs, combined net" complete={state?.day2Complete} href={`/${yr}/day2/leaderboard`} icon={<Users size={22} className="text-gold" />} />
-        {state?.day2Complete && (
+        {state?.day2Complete && state?.matchPlay && (
           <Link href={`/${yr}/day2/draft`} className="-mt-1 ml-8">
             <div
               className={cn(
@@ -351,10 +351,24 @@ export default async function HomePage({
         )}
         {/* Day 2 / Match Play Draft / Day 3 completions live in the "next step"
             tile at the top, not as card buttons. */}
-        <DayCard day={3} title={`Day 3 — ${dayLabel(3, "10 v 10")}`} subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
+        {state?.matchPlay === false ? (
+          // Pre-2025 seasons predate the Huron Cup — Day 3 is greyed out.
+          <div className="bg-muted/60 rounded-xl p-4 border border-border flex items-center gap-4 opacity-70">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground flex-shrink-0">
+              <Flag size={20} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-muted-foreground">Day 3 — Match Play</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Not played this year (started 2025)</p>
+            </div>
+          </div>
+        ) : (
+          <DayCard day={3} title={`Day 3 — ${dayLabel(3, "10 v 10")}`} subtitle="Truffle Hogs vs Mycelium Syndicate · Huron Cup" complete={state?.day3Complete} href={`/${yr}/day3/leaderboard`} icon={<Flag size={22} className="text-gold" />} />
+        )}
       </div>
       )}
 
+      {state?.matchPlay !== false && (
       <div className="grid grid-cols-2 gap-3 mb-5">
         <Link href={`/${yr}/day2/draft`}>
           <div className="bg-truffle-light rounded-xl p-3 text-center active:scale-[0.97] transition-transform">
@@ -369,6 +383,7 @@ export default async function HomePage({
           </div>
         </Link>
       </div>
+      )}
 
       {isAdmin && (
         <Link href={`/${yr}/admin`}>

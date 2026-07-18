@@ -359,7 +359,7 @@ export async function completeDay2Draft() {
 
   const activeByTeam = new Map<number, number>();
   for (const r of roster) {
-    if (!r.absent) {
+    if (!r.absent && r.teamId != null) {
       activeByTeam.set(r.teamId, (activeByTeam.get(r.teamId) ?? 0) + 1);
     }
   }

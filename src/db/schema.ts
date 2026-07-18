@@ -46,6 +46,9 @@ export const seasons = pgTable(
     // Hidden seasons (e.g. dry-run sandboxes) are excluded from the season
     // switcher and 404 on direct access.
     hidden: boolean().notNull().default(false),
+    // Whether this season has Sunday team match play. Pre-2025 seasons predate
+    // the Huron Cup / franchises — Day 3 is greyed out for them.
+    matchPlay: boolean().notNull().default(true),
     currentDay: integer().notNull().default(1),
     day1Complete: boolean().notNull().default(false),
     day1PickingStarted: boolean().notNull().default(false),
@@ -110,9 +113,8 @@ export const seasonRosters = pgTable(
     playerId: integer()
       .notNull()
       .references(() => players.id, { onDelete: "cascade" }),
-    teamId: integer()
-      .notNull()
-      .references(() => teams.id, { onDelete: "restrict" }),
+    // Nullable: pre-2025 seasons had no teams/franchises (see seasons.matchPlay).
+    teamId: integer().references(() => teams.id, { onDelete: "restrict" }),
     absent: boolean().notNull().default(false),
     isCaptain: boolean().notNull().default(false),
     // The player's handicap index FOR THIS SEASON (indices change year to year).

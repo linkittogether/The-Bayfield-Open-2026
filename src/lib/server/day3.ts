@@ -289,6 +289,12 @@ export async function setDay3Matches(input: z.input<typeof setMatchesSchema>) {
       .insert(day3Matches)
       .values(data.matches.map((m) => ({ ...m, seasonId })))
       .returning();
+    // Saving the matchups IS finalizing the draft — it starts Day 3, so mark the
+    // match-play draft complete (no separate "finalize" step needed).
+    await tx
+      .update(seasons)
+      .set({ day2DraftComplete: true, currentDay: 3 })
+      .where(eq(seasons.id, seasonId));
     return inserted;
   });
   await notifySeasonChange(seasonId);

@@ -1,4 +1,3 @@
-import { Shield } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { getDay3Teams, getMatchDraft } from "@/lib/server/day3";
 import { getSeasonView } from "@/lib/server/seasons";
@@ -31,30 +30,16 @@ export default async function Day3SetupPage({
           ? "syndicate"
           : null
       : null;
+  // Only admins/captains on the live season can drive the draft; everyone else
+  // (players, logged-out spectators) sees it read-only and live as picks land.
   const canSetup = !readOnly && (isAdmin || viewerSide !== null);
-
-  if (!canSetup) {
-    return (
-      <AppShell title="Match Setup" showBack backTo={`/${yr}/day3/leaderboard`} year={yr}>
-        <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-          <Shield size={40} className="text-muted-foreground" />
-          <div>
-            <p className="font-semibold text-lg">Captains Only</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Only Adison E and Josh W (or admins) can set up the Day 3 match pairings.
-              {!user && " Please log in."}
-            </p>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
 
   return (
     <AppShell title="Match Setup" showBack backTo={`/${yr}/day3/leaderboard`} year={yr}>
       <SetupBuilder
         year={yr}
         draft={draft}
+        canSetup={canSetup}
         isAdmin={isAdmin}
         viewerSide={viewerSide}
         truffle={teams.truffleHogs

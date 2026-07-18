@@ -477,7 +477,11 @@ function DayCard({
           <p className="font-semibold text-sm">{title}</p>
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
-        <ChevronRight size={16} className="text-muted-foreground flex-shrink-0" />
+        {complete ? (
+          <Check size={18} className="text-green-600 flex-shrink-0" />
+        ) : (
+          <ChevronRight size={16} className="text-muted-foreground flex-shrink-0" />
+        )}
       </div>
     </Link>
   );

@@ -112,21 +112,24 @@ export function PlayerCard({ card }: { card: CardData }) {
             />
           </div>
 
-          {/* rules + flavour text box — fixed height; content shrinks to fit */}
-          <div style={boxStyle} className="h-[18em] shrink-0 rounded-[0.25em] p-[1.1em_1.2em]">
-            <FitText className="h-full w-full font-serif text-[1.35em] leading-snug text-[#1a140d]">
-              <div className="pc-abilities flex flex-col gap-[0.5em]">
-                {card.abilities.map((html, i) => (
-                  <p key={i} dangerouslySetInnerHTML={{ __html: html }} />
-                ))}
-              </div>
-              {card.flavor && (
-                <>
-                  <div className="my-[0.7em] h-px bg-[linear-gradient(90deg,transparent,rgba(120,80,20,.75),transparent)]" />
-                  <p className="text-[0.95em] italic text-[#241a11]">{card.flavor}</p>
-                </>
-              )}
-            </FitText>
+          {/* rules + flavour text box — min height, GROWS to fit content so it
+              can never clip (no fixed height, no JS measurement). A wordier card
+              is simply a little taller; text is always fully visible. */}
+          <div
+            style={boxStyle}
+            className="flex min-h-[18em] shrink-0 flex-col rounded-[0.25em] p-[1.1em_1.2em] font-serif text-[1.35em] leading-snug text-[#1a140d]"
+          >
+            <div className="pc-abilities flex flex-col gap-[0.5em]">
+              {card.abilities.map((html, i) => (
+                <p key={i} dangerouslySetInnerHTML={{ __html: html }} />
+              ))}
+            </div>
+            {card.flavor && (
+              <>
+                <div className="my-[0.7em] h-px bg-[linear-gradient(90deg,transparent,rgba(120,80,20,.75),transparent)]" />
+                <p className="text-[0.95em] italic text-[#241a11]">{card.flavor}</p>
+              </>
+            )}
           </div>
         </div>
 

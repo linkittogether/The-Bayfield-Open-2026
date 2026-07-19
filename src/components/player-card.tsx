@@ -94,11 +94,13 @@ export function PlayerCard({ card }: { card: CardData }) {
           <span className="min-w-0 flex-1 truncate font-heading text-[3.15cqw] font-bold text-[#17140f]">
             {card.type}
           </span>
+          {/* small set-symbol glyph — fixed to the card scale (cqw), not the bar
+              height, so it stays a small mark and never crowds the type text */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/cards/logo.png"
             alt=""
-            className="h-[74%] w-auto shrink-0 opacity-80 [filter:brightness(0)]"
+            className="h-[4.4cqw] w-auto shrink-0 opacity-80 [filter:brightness(0)]"
           />
         </div>
 

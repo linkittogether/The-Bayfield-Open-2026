@@ -41,6 +41,17 @@ python3 tools/cards/build_card.py tools/cards/players/joe.json
 
 No network needed — fonts and textures are bundled under `assets/`.
 
+### 3b. Self-review (optional)
+
+```
+chmod +x tools/cards/preview.sh
+tools/cards/preview.sh tools/cards/players/joe.html   # -> joe.png (2x screenshot)
+```
+
+Renders the card to a PNG via headless Chrome (wraps it with a UTF-8 charset so
+em-dashes/stars/emoji render right — the raw card HTML omits `<head>` since the
+Artifact host supplies one). Use it to eyeball layout/seams before publishing.
+
 ## Team → frame colour
 
 | Team | Frame | Palette key |

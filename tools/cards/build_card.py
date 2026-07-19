@@ -35,16 +35,19 @@ ASSETS = os.path.join(HERE, "assets")
 # team -> frame colour
 TEAM_FRAME = {"truffle_hogs": "land", "mycelium_syndicate": "blue"}
 
-# per-frame palette: the smooth title/type plates + parchment text box.
-# (frame texture itself lives in assets/frames/<key>.jpg)
+# per-frame palette:
+#  plate = smooth title/type bars (hi, mid, lo)
+#  box   = parchment text box (hi, lo)
+#  bev   = the thick beveled COLOURED border around the art + text box (dark, light)
+#          — shades of the frame colour, NOT black (black is only the card's outer edge)
 FRAMES = {
-    "land":  dict(plate=("#efe8d6", "#dccfb0", "#c4b58d"), box=("#f4eedd", "#e6dbc2")),
-    "blue":  dict(plate=("#dbe7f4", "#a7c1de", "#7c9ec1"), box=("#eef4fb", "#d9e6f2")),
-    "red":   dict(plate=("#f1d8d0", "#d6998c", "#b46a5a"), box=("#fbeee9", "#f2d9cf")),
-    "gold":  dict(plate=("#f2e6c0", "#dcc98a", "#bfa65e"), box=("#fbf3da", "#efe0b8")),
-    "green": dict(plate=("#dfe9d3", "#adc79f", "#84a06f"), box=("#eef4e6", "#dde9cf")),
-    "black": dict(plate=("#d7d2cb", "#9a938a", "#6f685f"), box=("#e9e6df", "#cfcabf")),
-    "white": dict(plate=("#f7f3e6", "#e5dcc4", "#cdbf9c"), box=("#faf7ee", "#ece5d2")),
+    "land":  dict(plate=("#efe8d6", "#dccfb0", "#c4b58d"), box=("#f4eedd", "#e6dbc2"), bev=("#6b5029", "#f1e7ce")),
+    "blue":  dict(plate=("#dbe7f4", "#a7c1de", "#7c9ec1"), box=("#eef4fb", "#d9e6f2"), bev=("#20406a", "#d3e3f4")),
+    "red":   dict(plate=("#f1d8d0", "#d6998c", "#b46a5a"), box=("#fbeee9", "#f2d9cf"), bev=("#5e2519", "#f1d2c8")),
+    "gold":  dict(plate=("#f2e6c0", "#dcc98a", "#bfa65e"), box=("#fbf3da", "#efe0b8"), bev=("#7c5f1e", "#f7edc6")),
+    "green": dict(plate=("#dfe9d3", "#adc79f", "#84a06f"), box=("#eef4e6", "#dde9cf"), bev=("#3a5a2c", "#dcecc9")),
+    "black": dict(plate=("#d7d2cb", "#9a938a", "#6f685f"), box=("#e9e6df", "#cfcabf"), bev=("#2c2822", "#d8d3ca")),
+    "white": dict(plate=("#f7f3e6", "#e5dcc4", "#cdbf9c"), box=("#faf7ee", "#ece5d2"), bev=("#8a7c55", "#faf5e6")),
 }
 
 FONTS = [
@@ -87,6 +90,7 @@ def main():
         "FRAME": frame_b64, "LOGO": logo_b64, "ART": art_b64,
         "PLATE_HI": pal["plate"][0], "PLATE_MID": pal["plate"][1], "PLATE_LO": pal["plate"][2],
         "BOX_HI": pal["box"][0], "BOX_LO": pal["box"][1],
+        "BEV_LO": pal["bev"][0], "BEV_HI": pal["bev"][1],
         "NAME": data["name"], "TYPE": data["type"], "PIP": data.get("handicap", ""),
         "ARTPOS": data.get("artPosition", "50% 50%"),
         "ABILITIES": abilities, "FLAVOR": data.get("flavor", ""),
@@ -108,6 +112,7 @@ TEMPLATE = r"""<style>
   --ink:#17140f;
   --plate-hi:{{PLATE_HI}}; --plate-mid:{{PLATE_MID}}; --plate-lo:{{PLATE_LO}};
   --box-hi:{{BOX_HI}}; --box-lo:{{BOX_LO}};
+  --bev-lo:{{BEV_LO}}; --bev-hi:{{BEV_HI}};   /* thick coloured bevel around art + text box */
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{min-height:100vh;display:grid;place-items:center;padding:28px 16px;
@@ -126,10 +131,10 @@ body{min-height:100vh;display:grid;place-items:center;padding:28px 16px;
 .plate{background:
     linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 22%,rgba(0,0,0,.06) 60%,rgba(0,0,0,.16)),
     linear-gradient(180deg,var(--plate-hi) 0%,var(--plate-mid) 52%,var(--plate-lo) 100%);
-  border-radius:7px;
-  box-shadow:0 0 0 2px rgba(26,16,4,.92),0 0 0 3px rgba(255,244,220,.22),
+  border-radius:6px;
+  box-shadow:0 0 0 1px rgba(15,9,2,.55),0 0 0 3px var(--bev-lo),0 0 0 4px var(--bev-hi),
     inset 0 2px 2px rgba(255,252,244,.75),inset -2px -5px 6px rgba(28,17,5,.4);}
-.namebar{position:absolute;top:5.0%;left:5.9%;right:5.8%;height:5.9%;display:flex;align-items:center;padding:0 12px 0 16px;gap:8px;}
+.namebar{position:absolute;top:4.6%;left:7%;right:7%;height:6.4%;display:flex;align-items:center;padding:0 12px 0 16px;gap:8px;}
 .name{font-family:'PlayfairD',Georgia,serif;font-weight:800;color:var(--ink);font-size:clamp(17px,4.4vw,25px);
   letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;text-shadow:0 1px 0 rgba(255,245,210,.5);}
 .cost{display:flex;gap:3px;align-items:center;flex-shrink:0}
@@ -137,23 +142,25 @@ body{min-height:100vh;display:grid;place-items:center;padding:28px 16px;
   background:radial-gradient(circle at 38% 30%,#e6ddc9,#c3b596 60%,#9c8c68);color:#211b10;
   font-family:'Merri',serif;font-weight:700;font-size:clamp(12px,3vw,16px);
   box-shadow:-0.5px 2px 0 #000,inset 0 2px 2px rgba(255,255,255,.6),inset 0 -2px 3px rgba(0,0,0,.35);}
-.art{position:absolute;top:11.8%;left:8.4%;right:8.3%;height:42.2%;overflow:hidden;border-radius:2px;
+.art{position:absolute;top:12.4%;left:7%;right:7%;height:41.6%;overflow:hidden;border-radius:2px;
   box-shadow:
-    0 0 0 3px rgba(24,15,4,.95),          /* dark groove hugging the art */
-    0 0 0 4.5px rgba(255,240,205,.4),      /* light lip = raised coloured frame edge */
-    inset 0 3px 7px rgba(0,0,0,.6),
-    inset 0 -2px 5px rgba(0,0,0,.5);}
+    0 0 0 1.5px rgba(15,9,2,.7),        /* fine dark line at the art edge */
+    0 0 0 6px var(--bev-lo),            /* thick dark coloured bevel */
+    0 0 0 9px var(--bev-hi),            /* light coloured lip */
+    inset 0 3px 8px rgba(0,0,0,.6),
+    inset 0 -2px 6px rgba(0,0,0,.45);}
 .art img{width:100%;height:100%;object-fit:cover;object-position:{{ARTPOS}};display:block}
-.typebar{position:absolute;top:56.4%;left:5.9%;right:5.8%;height:5.6%;display:flex;align-items:center;padding:0 8px 0 16px;gap:8px;}
+.typebar{position:absolute;top:54%;left:7%;right:7%;height:6.2%;display:flex;align-items:center;padding:0 8px 0 16px;gap:8px;}
 .type{font-family:'PlayfairD',Georgia,serif;font-weight:700;color:var(--ink);font-size:clamp(12px,3.1vw,17px);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
 .setsym{height:74%;width:auto;flex-shrink:0;filter:brightness(0) saturate(100%);opacity:.82;}
-.textbox{position:absolute;top:63.5%;left:8.4%;right:8.3%;bottom:8%;background:linear-gradient(180deg,var(--box-hi),var(--box-lo));
+.textbox{position:absolute;top:60.2%;left:7%;right:7%;bottom:7%;background:linear-gradient(180deg,var(--box-hi),var(--box-lo));
   box-shadow:
-    0 0 0 3px rgba(24,15,4,.92),
-    0 0 0 4.5px rgba(255,240,205,.4),
+    0 0 0 1.5px rgba(15,9,2,.7),
+    0 0 0 6px var(--bev-lo),
+    0 0 0 9px var(--bev-hi),
     inset 1px 2px 3px rgba(255,255,255,.45),inset -2px -3px 5px rgba(120,90,50,.3);
-  border-radius:3px;padding:6% 6.5% 5.5%;display:flex;flex-direction:column;color:#1a140d;
+  border-radius:3px;padding:5% 6% 4.5%;display:flex;flex-direction:column;color:#1a140d;
   font-size:clamp(11px,2.75vw,15px);line-height:1.28;overflow:hidden;}
 .abil{display:flex;flex-direction:column;gap:5px}
 .abil p{margin:0}

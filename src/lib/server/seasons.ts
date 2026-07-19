@@ -46,6 +46,9 @@ export async function getLandingSeason(): Promise<Season> {
 }
 
 export async function getSeasonByYear(year: number): Promise<Season | null> {
+  // Non-numeric /[year] paths (e.g. browsers fetching /apple-touch-icon.png)
+  // arrive as NaN; short-circuit so we never send "NaN" to Postgres.
+  if (!Number.isInteger(year)) return null;
   const [row] = await db
     .select()
     .from(seasons)

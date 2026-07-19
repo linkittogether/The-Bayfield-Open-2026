@@ -58,6 +58,3 @@ next-env.d.ts
 WhatsApp Chat *
 _chat.txt
 
-# Generated player-card output (build artifacts, not source)
-tools/cards/players/*.html
-tools/cards/**/*.png

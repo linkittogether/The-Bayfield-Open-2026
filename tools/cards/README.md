@@ -1,110 +1,68 @@
 # Bayfield player trading cards (MTG-style)
 
-Self-contained HTML trading cards for Bayfield Open players, built on the real
-_Magic: the Gathering_ card frame. Each card inlines its fonts, frame texture,
-player art, and set mark, so the output is a single file you can publish as a
-Claude Artifact (or open directly in a browser).
+MTG-style trading cards for Bayfield Open players. The card is a normal app
+component — **React + Tailwind + flexbox**, same patterns as the rest of the app
+(`next/font`, the globals theme tokens, container queries). No absolute
+positioning; the frame is a vertical flex stack so nothing overlaps.
 
-## Layout — one file per golfer, named the same
-
-```
-tools/cards/
-  art/<golfer>.jpg        ← player art (e.g. art/joe-mcculla.jpg)
-  players/<golfer>.json   ← card content (e.g. players/joe-mcculla.json)
-  players/_template.json  ← copy this to start a new golfer (underscore = skipped by --all)
-```
-
-The JSON and its art share a slug (`joe-mcculla`), so a card's art is found
-automatically — no `art` field needed unless you want a different filename.
-Build output lands next to the JSON as `players/<golfer>.html`.
-
-## Pipeline
+## Where things live
 
 ```
-1. fetch_stats.ts        ─ pull a player's real career finishes from the DB
-2. art/<g>.jpg           ─ drop the player's art in, named <g>.jpg
-3. players/<g>.json      ─ author the card content (copy _template.json)
-4. build_card.py         ─ render players/<g>.json -> players/<g>.html (all inlined)
-   build_card.py --all   ─ ...or build every golfer at once
-5. preview.sh / publish  ─ self-review PNG, then publish via the Artifact tool
+src/components/player-card.tsx   ← the card component (Tailwind, flexbox column)
+src/lib/cards.ts                 ← CardData type, FRAMES palette, loadCards()
+src/app/cards/page.tsx           ← /cards gallery (renders every authored card)
+
+tools/cards/players/<slug>.json  ← one golfer's card content  (descriptions)
+tools/cards/art/<slug>.jpg       ← one golfer's art           (named to match)
+tools/cards/players/_template.json ← copy to start a new golfer
+tools/cards/fetch_stats.ts       ← pull a player's real finishes from the DB
+
+public/cards/frames/*.jpg        ← shared frame textures (land/blue/red/gold)
+public/cards/logo.png            ← the Bayfield set symbol
 ```
 
-### 1. Get the stats
+Per golfer = **one JSON + one image, same slug** (`joe-mcculla`). The art is
+read and inlined by `loadCards()`, so no `art` path is needed in the JSON.
 
-```
-npx tsx --env-file=.env.local tools/cards/fetch_stats.ts "Joe M"
-```
+## Add a golfer
 
-Prints, per season the player was rostered: handicap index, cumulative net +
-individual net rank, and the Saturday pair result (partner, combined net, rank,
-DQ/incomplete). Uses the app's own `getSeasonScoring` / `getDay2Leaderboard`, so
-the numbers match what the app shows. DQ'd / incomplete pairs have no net.
+1. `npx tsx --env-file=.env.local tools/cards/fetch_stats.ts "Joe M"` — get their
+   real per-season finishes (uses the app's `getSeasonScoring`/`getDay2Leaderboard`).
+2. Drop their art at `tools/cards/art/<slug>.jpg`.
+3. Copy `players/_template.json` to `players/<slug>.json` and fill it in.
+4. `npm run dev` → open **/cards** (the card appears automatically).
 
-### 2. Author the card
+### Card JSON
 
-Copy `players/_template.json` to `players/<golfer>.json` and edit, and drop the
-player's art at `art/<golfer>.jpg` (same slug — no `art` field needed). Schema +
-helper classes are documented at the top of `build_card.py`. Ability lines accept
-inline HTML; helper classes: `.yr` (year), `.win` (bold win), `.trophy` (gold),
-`.dq` (red italic).
-
-### 3. Build
-
-```
-python3 tools/cards/build_card.py tools/cards/players/joe-mcculla.json
-# -> tools/cards/players/joe-mcculla.html   (self-contained, ~840 KB)
-```
-
-No network needed — fonts and textures are bundled under `assets/`.
-
-### 3b. Self-review (optional)
-
-```
-chmod +x tools/cards/preview.sh
-tools/cards/preview.sh tools/cards/players/joe-mcculla.html   # -> joe.png (2x screenshot)
-```
-
-Renders the card to a PNG via headless Chrome (wraps it with a UTF-8 charset so
-em-dashes/stars/emoji render right — the raw card HTML omits `<head>` since the
-Artifact host supplies one). Use it to eyeball layout/seams before publishing.
+See `players/joe-mcculla.json`. Fields: `name`, `type`, `team`
+(`truffle_hogs` | `mycelium_syndicate` → frame colour) or `frame` override,
+`handicap` (mana pip), `artPosition` (CSS object-position), `abilities[]`
+(rules-text lines; inline HTML ok — helper classes `.yr` `.win` `.trophy` `.dq`),
+`flavor`, `collector`, `rarity`, `caption`.
 
 ## Team → frame colour
 
-| Team | Frame | Palette key |
-|------|-------|-------------|
-| Truffle Hogs 🐗 | solid / **land** (earthy tan) | `land` |
-| The Mycelium Syndicate 🍄 | solid / **blue** | `blue` |
+| Team | Frame |
+|------|-------|
+| Truffle Hogs 🐗 | `land` (earthy tan) |
+| The Mycelium Syndicate 🍄 | `blue` |
 
-Frame textures are stored in `assets/frames/`. `red`, `gold`, `green`, `black`,
-`white` palettes exist in `build_card.py` too; only `land`, `blue`, `red`, `gold`
-textures are bundled so far — pull more from Figma (below) as needed. Pre-2025
-players who never had a franchise: pick a frame per taste (gold reads neutral).
-
-The title bar and type line are smooth colour-matched plates with a dark outline
-and bevel (NOT the mottled frame texture — that's only the border around the
-art). The text box is a pale warm parchment. These are set via CSS vars
-(`--plate-*`, `--box-*`) per frame in the `FRAMES` table.
+Palettes for `land`/`blue`/`red`/`gold`/`green`/`black`/`white` are in
+`FRAMES` (src/lib/cards.ts); textures for the bundled ones are in
+`public/cards/frames/`. The title bar & type line are smooth colour-matched
+plates; the art + text box get a thick beveled coloured border; the text box is
+pale parchment — all driven by the per-frame `plate`/`box`/`bev` tokens.
 
 ## Figma source (community MTG Card Designer)
 
-- File key: `k13oe29MiXYRuBRmN8BZ9r` (read via the Figma MCP: `get_screenshot`,
-  `get_design_context`, `get_metadata`). The MCP only lists 2 of the 6 pages;
-  reach the rest by node id.
-- Assembled standard creature card (layout/bevels ported here): node **8:601**
-  (`.base / card`) on the "Base Card Components" page.
-- Frame background textures (solid): white `667:20`, blue `667:21`,
-  black `667:22`, red `667:23`, green `667:24`, gold `670:4`, artifact `670:5`,
-  land `670:3`. Hybrids (two-colour) `1059:0..9`.
-- Mana symbols / set symbols / watermarks live on the "Symbols and Icons" page
-  (`22:235`).
+Frame proportions/bevels were ported from the community "Magic: the Gathering
+Card Designer" Figma file (read via the Figma MCP).
+- File key: `k13oe29MiXYRuBRmN8BZ9r`; assembled card = node `8:601`.
+- Frame textures (solid): land `670:3`, blue `667:21`, red `667:23`, gold `670:4`,
+  green `667:24`, white `667:20`, black `667:22`.
+- To add a frame colour: `get_screenshot` the node (maxDimension 520), `curl` it,
+  `sips -Z 460` to a jpg in `public/cards/frames/<key>.jpg`, and confirm the
+  `<key>` palette exists in `FRAMES`.
 
-To add a frame colour: `get_screenshot` its node id at `maxDimension:520`,
-`curl` the returned URL, `sips -Z 460` to a jpg into `assets/frames/<key>.jpg`,
-and add the `<key>` palette to `FRAMES` in `build_card.py`.
-
-## Assets & licensing
-
-- Fonts: Merriweather + Playfair Display (SIL OFL), bundled as `.woff2` under
-  `assets/fonts/`. Substitutes for MTG's Beleren/Relay; swap later if desired.
-- Frame textures + the base-card layout come from the community Figma file;
-  used here for a private hobby project.
+Fonts: Playfair Display (titles, `font-heading`) + Merriweather (body,
+`font-serif`), both loaded via `next/font` in the root layout.

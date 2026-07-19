@@ -31,6 +31,7 @@
 
   --font-sans: var(--font-inter);
   --font-heading: var(--font-playfair);
+  --font-serif: var(--font-merriweather);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -105,3 +106,10 @@
   background: hsl(var(--border));
   border-radius: 4px;
 }
+
+/* Player trading cards: inline emphasis classes used inside ability text,
+   scoped to the card's rules box so the generic names can't leak. */
+.pc-abilities .yr { font-weight: 700; font-variant-numeric: tabular-nums; }
+.pc-abilities .win { font-weight: 700; }
+.pc-abilities .trophy { color: #9a6b00; }
+.pc-abilities .dq { color: #8a2b1c; font-style: italic; }

@@ -82,15 +82,21 @@ export function PlayerCard({ card }: { card: CardData }) {
             )}
           </div>
 
-          {/* art window */}
+          {/* art window — real art if present, else an "art pending" placeholder */}
           <div style={artStyle} className="h-[32.5em] shrink-0 overflow-hidden rounded-[0.15em]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={card.artSrc}
-              alt={card.name}
-              className="h-full w-full object-cover"
-              style={{ objectPosition: card.artPosition ?? "50% 50%" }}
-            />
+            {card.artSrc ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={card.artSrc}
+                alt={card.name}
+                className="h-full w-full object-cover"
+                style={{ objectPosition: card.artPosition ?? "50% 50%" }}
+              />
+            ) : (
+              <div className="grid h-full w-full place-items-center bg-[repeating-linear-gradient(45deg,#2a2115,#2a2115_1.2em,#241c12_1.2em,#241c12_2.4em)] text-center font-heading text-[1.4em] text-[#cdb98a]/70">
+                art&nbsp;pending
+              </div>
+            )}
           </div>
 
           {/* type line */}

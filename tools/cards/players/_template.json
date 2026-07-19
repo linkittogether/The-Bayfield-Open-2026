@@ -1,0 +1,15 @@
+{
+  "name": "Full Name",
+  "type": "Legendary Creature — Human Golfer",
+  "team": "truffle_hogs",
+  "handicap": "12",
+  "artPosition": "50% 50%",
+  "abilities": [
+    "<span class='yr'>2022 —</span> Nth overall (net NNN). <span class='win trophy'>★ Some Win</span> with Partner (NNN).",
+    "<span class='yr'>2025 —</span> Nth overall (net NNN)."
+  ],
+  "flavor": "A short, funny flavour line.",
+  "collector": "000/021",
+  "rarity": "R",
+  "caption": "Full Name · Truffle Hogs 🐗"
+}

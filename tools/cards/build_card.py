@@ -9,14 +9,19 @@ Gathering Card Designer" Figma file (see README.md for file key + node ids).
 Everything (fonts, frame texture, player art, set mark) is inlined as data URIs
 so the output is a self-contained page suitable for publishing as an Artifact.
 
-Player JSON schema (see players/joe.json):
+Per golfer: one JSON in players/ and one image in art/, named to match
+(players/joe-mcculla.json <-> art/joe-mcculla.jpg). Build one, or --all.
+
+    python3 build_card.py --all            # build every players/*.json
+
+Player JSON schema (see players/joe-mcculla.json):
 {
   "name":      "Joe McCulla",
   "type":      "Legendary Creature — Human Golfer",
   "team":      "truffle_hogs" | "mycelium_syndicate",   # -> frame colour
   "frame":     "land",           # optional: override the team->frame mapping
   "handicap":  "8",              # value shown in the colourless mana pip
-  "art":       "joe-art.jpg",    # path relative to this JSON file
+  "art":       "joe-mcculla.jpg",# optional; defaults to <json-name>.jpg in art/
   "artPosition":"60% 50%",       # optional CSS object-position for the art
   "abilities": ["<html>", ...],  # rules-text lines (inline HTML ok; see classes)
   "flavor":    "…",              # italic flavour text
@@ -31,6 +36,7 @@ import base64, json, os, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ASSETS = os.path.join(HERE, "assets")
+ART_DIR = os.path.join(HERE, "art")      # per-golfer art, named to match the JSON
 
 # team -> frame colour
 TEAM_FRAME = {"truffle_hogs": "land", "mycelium_syndicate": "blue"}
@@ -64,20 +70,21 @@ def b64(path):
         return base64.b64encode(f.read()).decode()
 
 
-def main():
-    if len(sys.argv) < 2:
-        sys.exit("usage: build_card.py <player.json> [out.html]")
-    jpath = sys.argv[1]
+def build(jpath, out=None):
     data = json.load(open(jpath))
-    jdir = os.path.dirname(os.path.abspath(jpath))
-    out = sys.argv[2] if len(sys.argv) > 2 else os.path.splitext(jpath)[0] + ".html"
+    out = out or os.path.splitext(jpath)[0] + ".html"
 
     frame_key = data.get("frame") or TEAM_FRAME.get(data.get("team", ""), "land")
     pal = FRAMES[frame_key]
 
+    # Art lives in art/ and defaults to the JSON's own name (players/joe-mcculla.json
+    # -> art/joe-mcculla.jpg). Override with an explicit "art" filename if needed.
+    slug = os.path.splitext(os.path.basename(jpath))[0]
+    art_name = data.get("art") or f"{slug}.jpg"
+
     frame_b64 = b64(os.path.join(ASSETS, "frames", frame_key + ".jpg"))
     logo_b64 = b64(os.path.join(ASSETS, "logo.png"))
-    art_b64 = b64(os.path.join(jdir, data["art"]))
+    art_b64 = b64(os.path.join(ART_DIR, art_name))
 
     faces = "\n".join(
         f"@font-face{{font-family:'{fam}';font-style:{st};font-weight:{w};font-display:swap;"
@@ -102,6 +109,21 @@ def main():
         html = html.replace("{{" + k + "}}", str(v))
     open(out, "w").write(html)
     print(f"wrote {out} ({len(html)} bytes, frame={frame_key})")
+
+
+def main():
+    args = sys.argv[1:]
+    if not args:
+        sys.exit("usage: build_card.py <players/<golfer>.json> [out.html]  |  build_card.py --all")
+    if args[0] == "--all":
+        import glob
+        paths = sorted(glob.glob(os.path.join(HERE, "players", "*.json")))
+        paths = [p for p in paths if not os.path.basename(p).startswith("_")]
+        for p in paths:
+            build(p)
+        print(f"built {len(paths)} card(s)")
+    else:
+        build(args[0], args[1] if len(args) > 1 else None)
 
 
 TEMPLATE = r"""<style>

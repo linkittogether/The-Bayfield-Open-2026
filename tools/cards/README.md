@@ -5,13 +5,28 @@ _Magic: the Gathering_ card frame. Each card inlines its fonts, frame texture,
 player art, and set mark, so the output is a single file you can publish as a
 Claude Artifact (or open directly in a browser).
 
+## Layout — one file per golfer, named the same
+
+```
+tools/cards/
+  art/<golfer>.jpg        ← player art (e.g. art/joe-mcculla.jpg)
+  players/<golfer>.json   ← card content (e.g. players/joe-mcculla.json)
+  players/_template.json  ← copy this to start a new golfer (underscore = skipped by --all)
+```
+
+The JSON and its art share a slug (`joe-mcculla`), so a card's art is found
+automatically — no `art` field needed unless you want a different filename.
+Build output lands next to the JSON as `players/<golfer>.html`.
+
 ## Pipeline
 
 ```
-1. fetch_stats.ts   ─ pull a player's real career finishes from the DB
-2. players/<p>.json ─ author the card content (name, abilities, flavor, team…)
-3. build_card.py    ─ render players/<p>.json -> players/<p>.html (all inlined)
-4. publish          ─ Artifact tool (or open the .html locally)
+1. fetch_stats.ts        ─ pull a player's real career finishes from the DB
+2. art/<g>.jpg           ─ drop the player's art in, named <g>.jpg
+3. players/<g>.json      ─ author the card content (copy _template.json)
+4. build_card.py         ─ render players/<g>.json -> players/<g>.html (all inlined)
+   build_card.py --all   ─ ...or build every golfer at once
+5. preview.sh / publish  ─ self-review PNG, then publish via the Artifact tool
 ```
 
 ### 1. Get the stats
@@ -27,16 +42,17 @@ the numbers match what the app shows. DQ'd / incomplete pairs have no net.
 
 ### 2. Author the card
 
-Copy `players/joe.json` and edit. Drop the player's art next to it (any name,
-referenced by the `art` field). Schema + helper classes are documented at the
-top of `build_card.py`. Ability lines accept inline HTML; helper classes:
-`.yr` (year), `.win` (bold win), `.trophy` (gold), `.dq` (red italic).
+Copy `players/_template.json` to `players/<golfer>.json` and edit, and drop the
+player's art at `art/<golfer>.jpg` (same slug — no `art` field needed). Schema +
+helper classes are documented at the top of `build_card.py`. Ability lines accept
+inline HTML; helper classes: `.yr` (year), `.win` (bold win), `.trophy` (gold),
+`.dq` (red italic).
 
 ### 3. Build
 
 ```
-python3 tools/cards/build_card.py tools/cards/players/joe.json
-# -> tools/cards/players/joe.html   (self-contained, ~840 KB)
+python3 tools/cards/build_card.py tools/cards/players/joe-mcculla.json
+# -> tools/cards/players/joe-mcculla.html   (self-contained, ~840 KB)
 ```
 
 No network needed — fonts and textures are bundled under `assets/`.
@@ -45,7 +61,7 @@ No network needed — fonts and textures are bundled under `assets/`.
 
 ```
 chmod +x tools/cards/preview.sh
-tools/cards/preview.sh tools/cards/players/joe.html   # -> joe.png (2x screenshot)
+tools/cards/preview.sh tools/cards/players/joe-mcculla.html   # -> joe.png (2x screenshot)
 ```
 
 Renders the card to a PNG via headless Chrome (wraps it with a UTF-8 charset so

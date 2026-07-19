@@ -1,12 +1,14 @@
 import type { CSSProperties } from "react";
 import { type CardData, FRAMES, frameKey } from "@/lib/cards";
+import { FitText } from "./fit-text";
 
 /**
- * MTG-style Bayfield player trading card. Pure flexbox column — the frame is a
- * vertical stack (title bar → art → type line → text box) so nothing overlaps.
- * Layout/spacing/type via Tailwind; the palette-driven textures, gradients and
- * beveled borders come from CSS vars set per frame (see lib/cards FRAMES).
- * Sizes use container-query units (cqw) so everything scales with the card.
+ * MTG-style Bayfield player trading card. Fixed 672:936 card with fixed-size
+ * blocks (title → art → type → text box) laid out as a flexbox column, so every
+ * card is identical in shape and the four blocks always occupy the same space.
+ * The CONTENT shrinks to fit its block via <FitText> (no clipping, no growing).
+ * Layout/spacing/type via Tailwind; palette-driven textures/bevels via CSS vars
+ * (lib/cards FRAMES). Sizes use container-query units (cqw) so it scales.
  */
 export function PlayerCard({ card }: { card: CardData }) {
   const fk = frameKey(card);
@@ -50,32 +52,32 @@ export function PlayerCard({ card }: { card: CardData }) {
   return (
     <div
       style={vars}
-      className="@container relative flex w-full flex-col overflow-hidden rounded-[5%/3.6%] bg-[#17140f] px-[3%] pt-[2.4%] pb-[1.4%] shadow-[0_24px_60px_-18px_rgba(0,0,0,.85)]"
+      className="@container relative flex aspect-[672/936] w-full flex-col overflow-hidden rounded-[5%/3.6%] bg-[#17140f] px-[3%] pt-[2.4%] pb-[1.4%] shadow-[0_24px_60px_-18px_rgba(0,0,0,.85)]"
     >
-      {/* coloured frame — a vertical flex stack of the four zones (flows to content) */}
+      {/* coloured frame — fixed-size blocks stacked in a flex column */}
       <div
         style={frameStyle}
-        className="flex flex-col gap-[1.6%] rounded-[2.5%/1.8%] p-[3.2%]"
+        className="flex min-h-0 flex-1 flex-col gap-[1.6%] rounded-[2.5%/1.8%] p-[3.2%]"
       >
-        {/* title bar */}
+        {/* title bar (fixed height) */}
         <div
           style={plateStyle}
-          className="flex shrink-0 items-center gap-2 rounded-[6px] py-[1.4%] pr-[3%] pl-[4%]"
+          className="flex shrink-0 grow-0 basis-[9%] items-center gap-2 rounded-[6px] pr-[3%] pl-[4%]"
         >
-          <span className="min-w-0 flex-1 truncate font-heading text-[4.6cqw] font-bold text-[#17140f] [text-shadow:0_1px_0_rgba(255,245,210,.5)]">
-            {card.name}
-          </span>
+          <FitText className="flex h-full flex-1 items-center font-heading text-[4.6cqw] font-bold text-[#17140f] [text-shadow:0_1px_0_rgba(255,245,210,.5)]">
+            <span className="flex h-full items-center whitespace-nowrap">{card.name}</span>
+          </FitText>
           {card.handicap && (
-            <span className="grid aspect-square w-[5.6cqw] shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_38%_30%,#e6ddc9,#c3b596_60%,#9c8c68)] font-serif text-[3.2cqw] font-bold text-[#211b10] shadow-[-0.5px_2px_0_#000,inset_0_2px_2px_rgba(255,255,255,.6),inset_0_-2px_3px_rgba(0,0,0,.35)]">
+            <span className="grid aspect-square h-[62%] shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_38%_30%,#e6ddc9,#c3b596_60%,#9c8c68)] font-serif text-[3.2cqw] font-bold text-[#211b10] shadow-[-0.5px_2px_0_#000,inset_0_2px_2px_rgba(255,255,255,.6),inset_0_-2px_3px_rgba(0,0,0,.35)]">
               {card.handicap}
             </span>
           )}
         </div>
 
-        {/* art window */}
+        {/* art window (fixed height) */}
         <div
           style={artStyle}
-          className="shrink-0 overflow-hidden rounded-[2px] aspect-[7/5]"
+          className="shrink-0 grow-0 basis-[47%] overflow-hidden rounded-[2px]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -86,16 +88,14 @@ export function PlayerCard({ card }: { card: CardData }) {
           />
         </div>
 
-        {/* type line */}
+        {/* type line (fixed height) */}
         <div
           style={plateStyle}
-          className="flex shrink-0 items-center gap-2 rounded-[6px] py-[1.1%] pr-[2%] pl-[4%]"
+          className="flex shrink-0 grow-0 basis-[7.5%] items-center gap-2 rounded-[6px] pr-[2.5%] pl-[4%]"
         >
-          <span className="min-w-0 flex-1 truncate font-heading text-[3.15cqw] font-bold text-[#17140f]">
-            {card.type}
-          </span>
-          {/* small set-symbol glyph — fixed to the card scale (cqw), not the bar
-              height, so it stays a small mark and never crowds the type text */}
+          <FitText className="flex h-full flex-1 items-center font-heading text-[3.3cqw] font-bold text-[#17140f]">
+            <span className="flex h-full items-center whitespace-nowrap">{card.type}</span>
+          </FitText>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/cards/logo.png"
@@ -104,24 +104,24 @@ export function PlayerCard({ card }: { card: CardData }) {
           />
         </div>
 
-        {/* rules + flavour text box */}
+        {/* rules + flavour text box (fixed remaining height; text shrinks to fit) */}
         <div
           style={boxStyle}
-          className="flex flex-col rounded-[3px] p-[5%_5.5%] font-serif text-[#1a140d]"
+          className="min-h-0 flex-1 rounded-[3px] p-[5%_5.5%]"
         >
-          <div className="pc-abilities flex flex-col gap-[1.6%] text-[3.05cqw] leading-snug">
-            {card.abilities.map((html, i) => (
-              <p key={i} dangerouslySetInnerHTML={{ __html: html }} />
-            ))}
-          </div>
-          {card.flavor && (
-            <>
-              <div className="my-[2.5%] h-px bg-[linear-gradient(90deg,transparent,rgba(120,80,20,.75),transparent)]" />
-              <p className="text-[2.9cqw] italic leading-snug text-[#241a11]">
-                {card.flavor}
-              </p>
-            </>
-          )}
+          <FitText className="h-full w-full font-serif text-[3.05cqw] leading-snug text-[#1a140d]">
+            <div className="pc-abilities flex flex-col gap-[0.5em]">
+              {card.abilities.map((html, i) => (
+                <p key={i} dangerouslySetInnerHTML={{ __html: html }} />
+              ))}
+            </div>
+            {card.flavor && (
+              <>
+                <div className="my-[0.7em] h-px bg-[linear-gradient(90deg,transparent,rgba(120,80,20,.75),transparent)]" />
+                <p className="text-[0.95em] italic text-[#241a11]">{card.flavor}</p>
+              </>
+            )}
+          </FitText>
         </div>
       </div>
 

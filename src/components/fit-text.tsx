@@ -4,20 +4,26 @@ import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "rea
 
 /**
  * Shrinks its content's font-size until it fits the box (both width and height).
- * The box takes its size from the surrounding layout (a fixed card block); the
- * base font-size is whatever `className`/`style` set — FitText only scales DOWN
- * from there. Children should size relatively (em/inherit), not in absolute
- * units, so they scale together. Re-fits on resize and after fonts load.
+ * The box takes its size from the surrounding layout (a fixed card block) and
+ * sets the base font-size via className; FitText only scales DOWN from there.
+ *
+ * The inner wrapper is left at its NATURAL size (not h-full) so its scrollHeight
+ * reflects the real content height — otherwise overflow can't be detected and
+ * text clips instead of shrinking. Children should size relatively (em/inherit).
+ * `center` vertically centres single-line content (title/type); otherwise the
+ * content is top-aligned (rules box). Re-fits on resize and after fonts load.
  */
 export function FitText({
   children,
   className,
   style,
-  minPct = 45,
+  center = false,
+  minPct = 35,
 }: {
   children: ReactNode;
   className?: string;
   style?: CSSProperties;
+  center?: boolean;
   minPct?: number;
 }) {
   const box = useRef<HTMLDivElement>(null);
@@ -47,10 +53,19 @@ export function FitText({
   });
 
   return (
-    <div ref={box} className={className} style={{ minWidth: 0, overflow: "hidden", ...style }}>
-      <div ref={inner} className="h-full w-full">
-        {children}
-      </div>
+    <div
+      ref={box}
+      className={className}
+      style={{
+        minWidth: 0,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: center ? "center" : "flex-start",
+        ...style,
+      }}
+    >
+      <div ref={inner}>{children}</div>
     </div>
   );
 }

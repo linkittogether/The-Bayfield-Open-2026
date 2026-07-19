@@ -62,10 +62,10 @@ export function PlayerCard({ card }: { card: CardData }) {
         {/* title bar (fixed height) */}
         <div
           style={plateStyle}
-          className="flex shrink-0 grow-0 basis-[9%] items-center gap-2 rounded-[6px] pr-[3%] pl-[4%]"
+          className="flex shrink-0 grow-0 basis-[10.5%] items-center gap-2 rounded-[6px] pr-[3%] pl-[4%]"
         >
-          <FitText className="flex h-full flex-1 items-center font-heading text-[4.6cqw] font-bold text-[#17140f] [text-shadow:0_1px_0_rgba(255,245,210,.5)]">
-            <span className="flex h-full items-center whitespace-nowrap">{card.name}</span>
+          <FitText center className="h-full flex-1 font-heading text-[4.8cqw] font-bold text-[#17140f] [text-shadow:0_1px_0_rgba(255,245,210,.5)]">
+            <span className="whitespace-nowrap">{card.name}</span>
           </FitText>
           {card.handicap && (
             <span className="grid aspect-square h-[62%] shrink-0 place-items-center rounded-full bg-[radial-gradient(circle_at_38%_30%,#e6ddc9,#c3b596_60%,#9c8c68)] font-serif text-[3.2cqw] font-bold text-[#211b10] shadow-[-0.5px_2px_0_#000,inset_0_2px_2px_rgba(255,255,255,.6),inset_0_-2px_3px_rgba(0,0,0,.35)]">
@@ -77,7 +77,7 @@ export function PlayerCard({ card }: { card: CardData }) {
         {/* art window (fixed height) */}
         <div
           style={artStyle}
-          className="shrink-0 grow-0 basis-[47%] overflow-hidden rounded-[2px]"
+          className="shrink-0 grow-0 basis-[45%] overflow-hidden rounded-[2px]"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -91,10 +91,10 @@ export function PlayerCard({ card }: { card: CardData }) {
         {/* type line (fixed height) */}
         <div
           style={plateStyle}
-          className="flex shrink-0 grow-0 basis-[7.5%] items-center gap-2 rounded-[6px] pr-[2.5%] pl-[4%]"
+          className="flex shrink-0 grow-0 basis-[8.5%] items-center gap-2 rounded-[6px] pr-[2.5%] pl-[4%]"
         >
-          <FitText className="flex h-full flex-1 items-center font-heading text-[3.3cqw] font-bold text-[#17140f]">
-            <span className="flex h-full items-center whitespace-nowrap">{card.type}</span>
+          <FitText center className="h-full flex-1 font-heading text-[3.4cqw] font-bold text-[#17140f]">
+            <span className="whitespace-nowrap">{card.type}</span>
           </FitText>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

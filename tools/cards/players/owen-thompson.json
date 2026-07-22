@@ -1,0 +1,15 @@
+{
+  "name": "Owen Thompson",
+  "type": "Legendary Creature — Human Curator",
+  "team": "truffle_hogs",
+  "handicap": "20",
+  "artPosition": "50% 40%",
+  "abilities": [
+    "<span class='win trophy'>★ Preventive Conservation</span> — the Open's keeper of records and relics. A museum conservator by trade: he catalogs every score, preserves every specimen, and mounts the trophies (and a crocodile named Jeffery). Nothing is lost to the sands of time on his watch.",
+    "<span class='yr'>The Quiet Scholar.</span> A fixture of the Open since before the records begin, and quietly elite of late — net 2nd in '24, 3rd in '25 — though he'll only cop to being \"not very good at golf.\" Reads the rulebook cover to cover; finds the mushroom-sized loophole every time."
+  ],
+  "flavor": "“An archive, a showroom, a lecture hall, and an inspiration — all at once.”",
+  "collector": "027/021",
+  "rarity": "M",
+  "caption": "Owen Thompson · Truffle Hogs 🐗"
+}

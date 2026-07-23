@@ -1,14 +1,14 @@
 {
   "name": "Ryan Park",
-  "type": "Legendary Creature — Human Captain",
+  "type": "Legendary Creature — Human Pilot",
   "team": "mycelium_syndicate",
   "handicap": "13",
   "artPosition": "50% 45%",
   "abilities": [
-    "<span class='win trophy'>★ Commissioner of the Open</span> — books the courses, captains the shuttle fleet, and collects everyone's dues.",
-    "<span class='yr'>2023 —</span> <span class='win'>Pairs Champion</span> with Mike Praught (286). Net finishes — '22 · 10th &nbsp; '23 · 7th &nbsp; '24 · 16th &nbsp; '25 · 11th."
+    "<span class='win trophy'>★ Commissioner of the Open</span> — books the courses, pilots the shuttle fleet, and collects everyone's dues.",
+    "<span class='yr'>Ship's Log.</span> <span class='win'>Pairs Champion</span> in 2023 with Mike Praught (286). Net finishes — '22 · 10th &nbsp; '23 · 7th &nbsp; '24 · 16th &nbsp; '25 · 11th."
   ],
-  "flavor": "Pay your dues — the boat leaves at nine. He said nine.",
+  "flavor": "“Pay your dues — the boat leaves at nine. He said nine.”",
   "collector": "3/20",
   "rarity": "M",
   "caption": "Ryan Park · The Mycelium Syndicate 🍄"

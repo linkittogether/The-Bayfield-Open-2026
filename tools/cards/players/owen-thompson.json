@@ -5,8 +5,8 @@
   "handicap": "20",
   "artPosition": "50% 40%",
   "abilities": [
-    "<span class='win trophy'>★ Preventive Conservation</span> — the Open's keeper of records and relics. A museum conservator by trade: he catalogs every score, preserves every specimen, and mounts the trophies (and a crocodile named Jeffery). Nothing is lost to the sands of time on his watch.",
-    "<span class='yr'>The Quiet Scholar.</span> A fixture of the Open since before the records begin, and quietly elite of late — net 2nd in '24, 3rd in '25 — though he'll only cop to being \"not very good at golf.\" Reads the rulebook cover to cover; finds the mushroom-sized loophole every time."
+    "<span class='win trophy'>★ Preventive Conservation</span> — a museum conservator by trade, and the Open's keeper of records and relics: he catalogs every score and mounts every trophy (and a crocodile named Jeffery).",
+    "<span class='yr'>The Quiet Scholar.</span> A fixture since before the records begin, quietly elite of late — net 2nd in '24, 3rd in '25 — though he cops only to \"not very good at golf.\""
   ],
   "flavor": "“An archive, a showroom, a lecture hall, and an inspiration — all at once.”",
   "collector": "027/021",

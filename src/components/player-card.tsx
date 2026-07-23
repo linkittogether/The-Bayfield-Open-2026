@@ -67,7 +67,7 @@ export function PlayerCard({ card }: { card: CardData }) {
           {/* title bar */}
           <div
             style={plateStyle}
-            className="flex h-[4em] shrink-0 items-center gap-[0.5em] rounded-[0.55em] pr-[0.7em] pl-[0.9em]"
+            className="relative z-[2] flex h-[4em] shrink-0 items-center gap-[0.5em] rounded-[0.55em] pr-[0.7em] pl-[0.9em]"
           >
             <FitText
               center
@@ -99,10 +99,10 @@ export function PlayerCard({ card }: { card: CardData }) {
             )}
           </div>
 
-          {/* type line */}
+          {/* type line — raised above the text box so its bevel never overlaps */}
           <div
             style={plateStyle}
-            className="flex h-[3.3em] shrink-0 items-center gap-[0.5em] rounded-[0.55em] pr-[0.6em] pl-[0.9em]"
+            className="relative z-[2] flex h-[3.3em] shrink-0 items-center gap-[0.5em] rounded-[0.55em] pr-[0.6em] pl-[0.9em]"
           >
             <FitText
               center

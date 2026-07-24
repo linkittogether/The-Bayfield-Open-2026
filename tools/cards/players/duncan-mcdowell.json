@@ -3,6 +3,7 @@
   "type": "Legendary Creature — Human Wizard",
   "team": "truffle_hogs",
   "handicap": "13",
+  "artPosition": "45% 50%",
   "abilities": [
     "<span class='win trophy'>★ The Illusionist</span> — conjured the app, the leaderboard, the Grint engine, and the very deck you're holding. His finest illusion, though, is the one where he's any good at golf.",
     "<span class='yr'>The Long Con.</span> The illusion mostly holds — a career-best net 5th in 2025, handicap quietly trimmed 22 → 13. Lately retired from foot races — a perfect 0–1."

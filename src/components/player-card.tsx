@@ -89,6 +89,8 @@ export function PlayerCard({ card }: { card: CardData }) {
               <img
                 src={card.artSrc}
                 alt={card.name}
+                loading="lazy"
+                decoding="async"
                 className="h-full w-full object-cover"
                 style={{ objectPosition: card.artPosition ?? "50% 50%" }}
               />

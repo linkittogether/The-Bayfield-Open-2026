@@ -13,7 +13,7 @@ src/lib/cards.ts                 ← CardData type, FRAMES palette, loadCards()
 src/app/cards/page.tsx           ← /cards gallery (renders every authored card)
 
 tools/cards/players/<slug>.json  ← one golfer's card content  (descriptions)
-tools/cards/art/<slug>.jpg       ← one golfer's art           (named to match)
+public/cards/art/<slug>.webp     ← optimized golfer art       (named to match)
 tools/cards/players/_template.json ← copy to start a new golfer
 tools/cards/fetch_stats.ts       ← pull a player's real finishes from the DB
 
@@ -22,13 +22,15 @@ public/cards/logo.png            ← the Bayfield set symbol
 ```
 
 Per golfer = **one JSON + one image, same slug** (`joe-mcculla`). The art is
-read and inlined by `loadCards()`, so no `art` path is needed in the JSON.
+served as a static asset, so the card page stays small and no `art` path is
+needed in the JSON.
 
 ## Add a golfer
 
 1. `npx tsx --env-file=.env.local tools/cards/fetch_stats.ts "Joe M"` — get their
    real per-season finishes (uses the app's `getSeasonScoring`/`getDay2Leaderboard`).
-2. Drop their art at `tools/cards/art/<slug>.jpg`.
+2. Optimize their art as WebP and save it at
+   `public/cards/art/<slug>.webp` (quality 82 is the current target).
 3. Copy `players/_template.json` to `players/<slug>.json` and fill it in.
 4. `npm run dev` → open **/cards** (the card appears automatically).
 

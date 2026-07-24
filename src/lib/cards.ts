@@ -4,7 +4,7 @@ import path from "path";
 /**
  * One golfer's trading-card content. Authored per golfer under tools/cards/:
  *   tools/cards/players/<slug>.json   ← this data
- *   tools/cards/art/<slug>.jpg        ← their art (inlined into `artSrc` on load)
+ *   public/cards/art/<slug>.webp      ← their optimized, static artwork
  */
 export interface CardData {
   slug: string;
@@ -20,7 +20,7 @@ export interface CardData {
   collector?: string;
   rarity?: string;
   caption?: string;
-  /** Data URI of the golfer's art, filled in by loadCards() from art/<slug>.jpg. */
+  /** Public URL of the golfer's optimized artwork. */
   artSrc?: string;
 }
 
@@ -55,13 +55,14 @@ export function frameKey(c: Pick<CardData, "frame" | "team">): string {
 }
 
 const CARDS_DIR = path.join(process.cwd(), "tools/cards");
+const CARD_ART_DIR = path.join(process.cwd(), "public", "cards", "art");
 
-/** Read art/<slug>.jpg (or .png) as a data URI, or undefined if absent. */
-async function artDataUri(slug: string): Promise<string | undefined> {
-  for (const [ext, mime] of [["jpg", "jpeg"], ["png", "png"]] as const) {
+/** Return the public URL for a card's optimized art, or undefined if absent. */
+async function artPath(slug: string): Promise<string | undefined> {
+  for (const ext of ["webp", "jpg", "png"] as const) {
     try {
-      const buf = await fs.readFile(path.join(CARDS_DIR, "art", `${slug}.${ext}`));
-      return `data:image/${mime};base64,${buf.toString("base64")}`;
+      await fs.access(path.join(CARD_ART_DIR, `${slug}.${ext}`));
+      return `/cards/art/${slug}.${ext}`;
     } catch {
       /* try next extension */
     }
@@ -69,12 +70,12 @@ async function artDataUri(slug: string): Promise<string | undefined> {
   return undefined;
 }
 
-/** Load one authored card by slug (JSON + inlined art). */
+/** Load one authored card by slug (JSON + public artwork URL). */
 export async function loadCard(slug: string): Promise<CardData> {
   const raw = JSON.parse(
     await fs.readFile(path.join(CARDS_DIR, "players", `${slug}.json`), "utf8"),
   );
-  return { slug, ...raw, artSrc: await artDataUri(slug) } as CardData;
+  return { slug, ...raw, artSrc: await artPath(slug) } as CardData;
 }
 
 /** Load all authored cards (skips _-prefixed files like the template). */

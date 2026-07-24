@@ -46,6 +46,9 @@ export const seasons = pgTable(
     // Hidden seasons (e.g. dry-run sandboxes) are excluded from the season
     // switcher and 404 on direct access.
     hidden: boolean().notNull().default(false),
+    // Whether this season has Sunday team match play. Pre-2025 seasons predate
+    // the Huron Cup / franchises — Day 3 is greyed out for them.
+    matchPlay: boolean().notNull().default(true),
     currentDay: integer().notNull().default(1),
     day1Complete: boolean().notNull().default(false),
     day1PickingStarted: boolean().notNull().default(false),
@@ -110,9 +113,8 @@ export const seasonRosters = pgTable(
     playerId: integer()
       .notNull()
       .references(() => players.id, { onDelete: "cascade" }),
-    teamId: integer()
-      .notNull()
-      .references(() => teams.id, { onDelete: "restrict" }),
+    // Nullable: pre-2025 seasons had no teams/franchises (see seasons.matchPlay).
+    teamId: integer().references(() => teams.id, { onDelete: "restrict" }),
     absent: boolean().notNull().default(false),
     isCaptain: boolean().notNull().default(false),
     // The player's handicap index FOR THIS SEASON (indices change year to year).
@@ -190,6 +192,11 @@ export const segmentScores = pgTable(
       .notNull()
       .references(() => players.id, { onDelete: "cascade" }),
     gross: integer().notNull(),
+    // Historical seasons imported from event leaderboards (e.g. 2024, off Grint)
+    // used tournament handicaps that don't match the WHS engine. When set, this
+    // is the authoritative net for the segment and bypasses the computed net.
+    // Null for live seasons — net is computed from index + course data as usual.
+    netOverride: numeric({ precision: 4, scale: 1, mode: "number" }),
   },
   (t) => [unique().on(t.segmentId, t.playerId)],
 );
@@ -207,6 +214,10 @@ export const day2Teams = pgTable("day2_teams", {
     .references(() => players.id, { onDelete: "cascade" }),
   pickOrder: integer().notNull(),
   name: text(),
+  // A DQ'd pair is excluded from the Pairs standings/champion (e.g. a partner
+  // didn't finish a round). Kept on the board, ranked last, flagged with reason.
+  disqualified: boolean().notNull().default(false),
+  dqReason: text(),
 });
 
 export const day3Matches = pgTable("day3_matches", {

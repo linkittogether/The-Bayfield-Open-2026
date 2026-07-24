@@ -19,6 +19,23 @@ export default async function Day3LeaderboardPage({
   const { year } = await params;
   const yr = Number(year);
   const { viewed: season, readOnly } = await getSeasonView(yr);
+
+  // Pre-2025 seasons predate the Huron Cup / team match play.
+  if (!season.matchPlay) {
+    return (
+      <AppShell title="Day 3 — Huron Cup" year={yr}>
+        <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+          <Flag size={40} className="text-muted-foreground" />
+          <p className="font-semibold text-lg">No match play in {season.year}</p>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Sunday team match play (the Huron Cup) started in 2025. {season.year} was
+            two days of stroke play — see the Day 1 and Day 2 leaderboards.
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
+
   const [user, lb, matches, teams, teamNet] = await Promise.all([
     getCurrentUser(),
     getDay3Leaderboard(season.id),

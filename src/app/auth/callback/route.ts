@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const [player] = await db
     .select({ id: players.id })
     .from(players)
-    .where(eq(sql`lower(${players.email})`, email))
+    .where(eq(sql`btrim(lower(${players.email}))`, email))
     .limit(1);
 
   // Verified Google account, but nobody has been assigned this email.

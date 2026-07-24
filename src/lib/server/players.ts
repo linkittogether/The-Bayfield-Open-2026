@@ -39,8 +39,12 @@ const updatePlayerSchema = z
     photoUrl: z.string().nullable().optional(),
     // Full legal name for external comms. Empty string clears it.
     fullName: z.string().trim().optional(),
-    // Google SSO email. Empty string clears it.
-    email: z.union([z.email(), z.literal("")]).optional(),
+    // Google SSO email. Empty string clears it. Trim first so a stray space
+    // (e.g. from a copy/paste) can't slip in and break the exact-match login.
+    email: z.preprocess(
+      (v) => (typeof v === "string" ? v.trim() : v),
+      z.union([z.email(), z.literal("")]),
+    ).optional(),
     isAdmin: z.boolean().optional(),
     // Pin the current season's handicap so a Grint pull won't overwrite it.
     handicapLocked: z.boolean().optional(),

@@ -141,6 +141,27 @@
       "when": 1784401366201,
       "tag": "0019_add_player_full_name",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1784408052125,
+      "tag": "0020_pre2025_seasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784409613485,
+      "tag": "0021_day2_dq",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1784412151588,
+      "tag": "0022_segment_net_override",
+      "breakpoints": true
     }
   ]
 }

@@ -37,8 +37,8 @@ export default async function Day2LeaderboardPage({
   // Champions are only crowned once an admin closes Day 2 scoring. Before that
   // (even with every score in) the top pair is shown as the provisional leader.
   const champions = !!state?.day2Complete;
-  // Surface the leader as soon as any pair has a combined net.
-  const leader = lb[0]?.combinedNet != null ? lb[0] : null;
+  // Surface the leader as soon as any (non-DQ) pair has a combined net.
+  const leader = lb.find((e) => !e.disqualified && e.combinedNet != null) ?? null;
   // Does the current person already have all their Day-2 grosses in? → "Edit".
   const meId = user?.player.id ?? null;
   const myEntry =
@@ -156,28 +156,48 @@ export default async function Day2LeaderboardPage({
                 key={entry.id}
                 className={cn(
                   "rounded-xl border overflow-hidden",
-                  isMe
-                    ? "bg-primary/5 border-primary ring-2 ring-primary/30"
-                    : i === 0 && entry.combinedNet != null
-                      ? "bg-white border-gold ring-1 ring-gold/50"
-                      : "bg-white border-border",
+                  entry.disqualified || entry.incomplete
+                    ? "bg-muted/40 border-border opacity-75"
+                    : isMe
+                      ? "bg-primary/5 border-primary ring-2 ring-primary/30"
+                      : i === 0 && entry.combinedNet != null
+                        ? "bg-white border-gold ring-1 ring-gold/50"
+                        : "bg-white border-border",
                 )}
               >
                 <div className="p-3 flex items-center gap-3">
                   <div className="w-8 text-center font-bold text-sm">
-                    {entry.combinedNet != null ? medals[i] || ordinal(i + 1) : "—"}
+                    {entry.disqualified ? (
+                      <span className="text-[10px] font-bold text-destructive">DQ</span>
+                    ) : entry.incomplete ? (
+                      <span className="text-muted-foreground">?</span>
+                    ) : entry.combinedNet != null ? (
+                      medals[i] || ordinal(i + 1)
+                    ) : (
+                      "—"
+                    )}
                   </div>
                   <div className="flex -space-x-2 flex-shrink-0">
                     <PlayerAvatar name={entry.player1Name} photoUrl={entry.player1Photo} size="sm" />
                     <PlayerAvatar name={entry.player2Name} photoUrl={entry.player2Photo} size="sm" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">
+                    <p className={cn("font-semibold text-sm truncate", (entry.disqualified || entry.incomplete) && "text-muted-foreground")}>
                       {entry.player1Name} & {entry.player2Name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Index {entry.player1Handicap}/{entry.player2Handicap}
-                    </p>
+                    {entry.disqualified ? (
+                      <p className="text-xs text-destructive font-medium truncate">
+                        Disqualified{entry.dqReason ? ` — ${entry.dqReason}` : ""}
+                      </p>
+                    ) : entry.incomplete ? (
+                      <p className="text-xs text-muted-foreground italic truncate">
+                        Incomplete — some scores not recorded
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Index {entry.player1Handicap}/{entry.player2Handicap}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {isMe && (
@@ -186,10 +206,20 @@ export default async function Day2LeaderboardPage({
                       </span>
                     )}
                     <div className="text-right">
-                      <p className="font-bold text-xl leading-none">
-                        {formatNet(entry.combinedNet)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">net</p>
+                      {entry.disqualified ? (
+                        <p className="font-bold text-lg leading-none text-muted-foreground line-through">
+                          {formatNet(entry.combinedNet)}
+                        </p>
+                      ) : entry.incomplete ? (
+                        <p className="font-bold text-xl leading-none text-muted-foreground">?</p>
+                      ) : (
+                        <>
+                          <p className="font-bold text-xl leading-none">
+                            {formatNet(entry.combinedNet)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">net</p>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -212,25 +242,35 @@ export default async function Day2LeaderboardPage({
                     ))}
                     <span className="text-center text-[10px] uppercase tracking-wide text-muted-foreground">Total</span>
 
-                    {playerRows.map((pl) => (
-                      <Fragment key={pl.name}>
-                        <span className="font-medium truncate">{pl.name}</span>
-                        {pl.rounds.map((r, k) => (
-                          <span key={k} className="text-center leading-tight">
-                            <span className="block font-semibold">{r.gross ?? "—"}</span>
+                    {playerRows.map((pl) => {
+                      // In a finalized season, a missing round is a lost score →
+                      // "?"; and if any round is missing we don't total the player.
+                      const missing = (v: number | null) =>
+                        v == null ? (champions ? "?" : "—") : null;
+                      const plIncomplete =
+                        champions && pl.rounds.some((r) => r.gross == null);
+                      return (
+                        <Fragment key={pl.name}>
+                          <span className="font-medium truncate">{pl.name}</span>
+                          {pl.rounds.map((r, k) => (
+                            <span key={k} className="text-center leading-tight">
+                              <span className="block font-semibold">{r.gross ?? missing(r.gross)}</span>
+                              <span className="block text-[10px] italic text-muted-foreground">
+                                {r.net != null ? formatNet(r.net) : missing(r.net)}
+                              </span>
+                            </span>
+                          ))}
+                          <span className="text-center leading-tight">
+                            <span className="block font-semibold">
+                              {plIncomplete ? "?" : (pl.total.gross ?? "—")}
+                            </span>
                             <span className="block text-[10px] italic text-muted-foreground">
-                              {formatNet(r.net)}
+                              {plIncomplete ? "?" : formatNet(pl.total.net)}
                             </span>
                           </span>
-                        ))}
-                        <span className="text-center leading-tight">
-                          <span className="block font-semibold">{pl.total.gross ?? "—"}</span>
-                          <span className="block text-[10px] italic text-muted-foreground">
-                            {formatNet(pl.total.net)}
-                          </span>
-                        </span>
-                      </Fragment>
-                    ))}
+                        </Fragment>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

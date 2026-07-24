@@ -46,9 +46,6 @@ export default async function RootPage() {
         >
           Sign in
         </Link>
-        <Link href={`/${season.year}`} className="text-sm text-green-200 underline">
-          View this year&apos;s tournament →
-        </Link>
       </div>
 
       <Link href="/privacy" className="mt-10 text-xs text-green-200/70 underline">

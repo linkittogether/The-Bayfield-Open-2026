@@ -53,3 +53,12 @@ next-env.d.ts
 # Local tournament data spreadsheets / exports (not part of the app)
 *.xlsx
 /players.csv
+
+# Personal WhatsApp chat exports (never commit)
+WhatsApp Chat *
+_chat.txt
+
+# Rendered player-card PNGs — regenerable build artifacts (from art + JSON via
+# the /cards/export route + sharp trim). ~84MB; kept out to keep the repo lean.
+/tools/cards/exports/
+
